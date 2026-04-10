@@ -2,7 +2,6 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Boggle Français</title>
 <style>
@@ -449,7 +448,7 @@ const CODE_WORDS = [
   'RONCE','ROUGE','ROUTE','RUCHE','RUINE','SABLE','SAUGE','SIGNE',
   'SOLDE','SONAR','STYLE','TAUPE','TERME','TERRE','TIGRE','TITRE',
   'TOILE','TOTEM','TRONC','TULIPE','TURBO','ULTRA','UNION','VALVE',
-  'VEINE','VERGE','VIGNE','VITRE','VOILE','ZELÉE','ZÈBRE','ZINEB'
+  'VEINE','VERGE','VIGNE','VITRE','VOILE','ZELEE','ZEBRE','ZINEB'
 ];
 
 // ══════════════════════════════════════════════════════════
@@ -635,7 +634,7 @@ async function doJoin() {
   let snap;
   try { snap=await db.collection('games').doc(code).get(); }
   catch(e) { document.getElementById('joinError').textContent='Erreur réseau.'; return; }
-  if (!snap.exists()) { document.getElementById('joinError').textContent='Code introuvable.'; return; }
+  if (!snap.exists) { document.getElementById('joinError').textContent='Code introuvable.'; return; }
   const data=snap.data();
   if (Date.now()>data.expiresAt) { document.getElementById('joinError').textContent='Cette partie a expiré (72h).'; return; }
   if (data.players?.[pseudo]?.score!==undefined) {
@@ -833,7 +832,7 @@ function showSoloOver(words) {
 
 async function showMultiOver(words) {
   const snap=await db.collection('games').doc(currentGameCode).get();
-  const players=snap.exists()?snap.data().players||{}:{};
+  const players=snap.exists?snap.data().players||{}:{};
   const ov=document.createElement('div'); ov.className='overlay';
   ov.innerHTML=`
     <h2>Fin de partie</h2>
@@ -853,7 +852,7 @@ async function showMultiOver(words) {
   if (firestoreUnsub) firestoreUnsub();
   firestoreUnsub=db.collection('games').doc(currentGameCode).onSnapshot(snap=>{
     const lbEl=ov.querySelector('#lbRows'); if(!lbEl)return;
-    lbEl.innerHTML=renderLbRows(snap.exists()?snap.data().players||{}:{});
+    lbEl.innerHTML=renderLbRows(snap.exists?snap.data().players||{}:{});
   });
 }
 
@@ -938,7 +937,7 @@ async function showSharedPanel() {
     try {
       const snap=await db.collection('games').doc(g.code).get();
       const container=document.getElementById(`sp_${g.code}_${g.pseudo}`); if(!container)continue;
-      if (!snap.exists()) { container.innerHTML='<span style="color:var(--red);font-size:.6rem;">Partie introuvable</span>'; continue; }
+      if (!snap.exists) { container.innerHTML='<span style="color:var(--red);font-size:.6rem;">Partie introuvable</span>'; continue; }
       const pl=snap.data().players||{};
       const sorted=Object.entries(pl).filter(([,v])=>v.score!==undefined).sort((a,b)=>b[1].score-a[1].score);
       if (!sorted.length) { container.innerHTML='<span style="color:var(--text-dim);font-size:.6rem;">Aucun score encore</span>'; continue; }
@@ -964,7 +963,7 @@ async function showSharedPanel() {
       document.getElementById('sharedPanel').style.display='none';
       goFullscreen(); currentMode='multi'; currentPseudo=pseudo; currentGameCode=code;
       const snap=await db.collection('games').doc(code).get();
-      if (!snap.exists()) { showNotif('Partie introuvable.'); return; }
+      if (!snap.exists) { showNotif('Partie introuvable.'); return; }
       board=snap.data().board;
       launchGame();
     });
