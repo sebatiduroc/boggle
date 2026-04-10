@@ -13,15 +13,35 @@
     --cream:#f0e8d8; --red:#e05252; --green:#52c97a;
     --text:#d8d0c8; --text-dim:#6a6478;
     --tile-bg:#1a1a22; --tile-active:#2a2438; --tile-border:#30304a;
+
+    /*
+      Taille d'une tuile : on veut 4 tuiles + 3 gaps dans la plus petite dimension.
+      Sur mobile portrait, c'est la largeur qui contraint.
+      On réserve 8px de padding de chaque côté (16px total).
+      Taille de tuile = (100vw - 16px - 3*gap) / 4
+      On utilise vmin pour que ça marche aussi en paysage.
+      En portrait : vmin = vw → tuile ≈ (100vmin - 16px) / 4.35
+      On fixe --gap et --tile-size via une variable calculée.
+    */
+    --pad: 10px;
+    --gap: 6px;
+    /* taille d'une tuile : max disponible pour tenir en largeur ET en hauteur */
+    --tile-size: min(
+      calc((100vw - 2*var(--pad) - 3*var(--gap)) / 4),
+      calc((100dvh - 2*var(--pad) - 3*var(--gap) - 140px) / 4)
+    );
   }
 
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-  html, body {
-    width:100%; height:100%;
-    background:var(--bg); color:var(--text);
-    font-family:'DM Mono',monospace;
-    overflow:hidden; user-select:none;
+  html { height: 100%; }
+
+  body {
+    height: 100dvh;           /* dynamic viewport height : exclut l'UI du navigateur */
+    width: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Mono', monospace;
+    overflow: hidden; user-select: none;
   }
 
   body::before {
@@ -30,276 +50,312 @@
     pointer-events:none; z-index:1000; opacity:0.4;
   }
 
-  /* ════════════════════════════════
+  /* ══════════════════════════════════════
      LOADING SCREEN
-  ════════════════════════════════ */
+  ══════════════════════════════════════ */
   #loadingScreen {
-    position:fixed; inset:0; background:var(--bg);
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    z-index:900; gap:22px; padding:32px;
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 900; gap: 20px; padding: 32px;
   }
   #loadingScreen h2 {
-    font-family:'Playfair Display',serif; font-size:clamp(1.8rem,7vw,2.6rem);
-    color:var(--gold); letter-spacing:0.1em; text-transform:uppercase;
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.8rem, 7vw, 2.6rem);
+    color: var(--gold); letter-spacing: 0.1em; text-transform: uppercase;
   }
   #loadingMsg {
-    font-size:0.68rem; letter-spacing:0.2em; color:var(--text-dim);
-    text-transform:uppercase; text-align:center; line-height:1.9;
+    font-size: 0.68rem; letter-spacing: 0.2em; color: var(--text-dim);
+    text-transform: uppercase; text-align: center; line-height: 1.9;
   }
-  .bar-wrap { width:min(88vw,300px); height:4px; background:var(--surface2); border-radius:2px; overflow:hidden; }
-  #progressBar { height:100%; width:0%; background:var(--gold); border-radius:2px; transition:width 0.25s ease; }
+  .bar-wrap {
+    width: min(88vw, 300px); height: 4px;
+    background: var(--surface2); border-radius: 2px; overflow: hidden;
+  }
+  #progressBar {
+    height: 100%; width: 0%; background: var(--gold);
+    border-radius: 2px; transition: width 0.25s ease;
+  }
   #errorMsg {
-    font-size:0.7rem; color:var(--red); text-align:center;
-    max-width:320px; line-height:1.9; display:none;
-    border:1px solid rgba(224,82,82,0.3); border-radius:10px; padding:16px 20px;
+    font-size: 0.7rem; color: var(--red); text-align: center;
+    max-width: 320px; line-height: 1.9; display: none;
+    border: 1px solid rgba(224,82,82,0.3); border-radius: 10px; padding: 16px 20px;
   }
   #playBtn {
-    display:none; /* shown after load */
-    padding:15px 48px;
-    border:2px solid var(--gold); border-radius:12px;
-    background:var(--gold); color:#0d0d0f;
-    font-family:'DM Mono',monospace; font-size:0.85rem;
-    letter-spacing:0.2em; text-transform:uppercase;
-    cursor:pointer; font-weight:500;
-    transition:background .15s, transform .1s;
+    display: none;
+    padding: 15px 52px;
+    border: 2px solid var(--gold); border-radius: 12px;
+    background: var(--gold); color: #0d0d0f;
+    font-family: 'DM Mono', monospace; font-size: 0.85rem;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    cursor: pointer; font-weight: 500;
+    transition: background .15s, transform .1s;
   }
-  #playBtn:hover { background:var(--gold-light); transform:scale(1.03); }
+  #playBtn:hover { background: var(--gold-light); transform: scale(1.03); }
 
-  /* ════════════════════════════════
-     GAME UI — plein écran flex
-  ════════════════════════════════ */
+  /* ══════════════════════════════════════
+     GAME UI
+     Layout : colonne flex, hauteur = 100dvh
+     Tout est flex-shrink:0 sauf rien,
+     la grille se dimensionne via --tile-size.
+  ══════════════════════════════════════ */
   #gameUI {
-    display:none; /* flex after start */
-    position:fixed; inset:0;
-    flex-direction:column; align-items:center;
-    padding:env(safe-area-inset-top,10px) 12px env(safe-area-inset-bottom,10px);
-    gap:0;
+    display: none; /* → flex au démarrage */
+    flex-direction: column;
+    align-items: center;
+    height: 100dvh;
+    width: 100%;
+    padding: var(--pad);
+    padding-top: max(var(--pad), env(safe-area-inset-top));
+    padding-bottom: max(var(--pad), env(safe-area-inset-bottom));
+    gap: 4px;
+    overflow: hidden;
   }
 
-  /* Header compact */
+  /* ── En-tête ── */
   #gameHeader {
-    width:100%; display:flex; align-items:baseline;
-    justify-content:center; gap:10px;
-    padding:6px 0 4px;
-    flex-shrink:0;
+    display: flex; align-items: baseline;
+    justify-content: center; gap: 8px;
+    width: 100%; flex-shrink: 0;
   }
   #gameHeader h1 {
-    font-family:'Playfair Display',serif;
-    font-size:clamp(1.4rem,5vw,2rem);
-    font-weight:900; color:var(--gold);
-    letter-spacing:0.08em; text-transform:uppercase; line-height:1;
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(1.2rem, 4.5vw, 1.8rem);
+    font-weight: 900; color: var(--gold);
+    letter-spacing: 0.08em; text-transform: uppercase; line-height: 1;
   }
-  #dictInfo {
-    font-size:0.52rem; color:var(--text-dim); letter-spacing:0.1em;
-  }
+  #dictInfo { font-size: 0.5rem; color: var(--text-dim); letter-spacing: 0.1em; }
 
-  /* Stats bar */
-  .top-bar {
-    display:flex; gap:8px; width:100%; flex-shrink:0;
-    padding:4px 0;
-  }
+  /* ── Stats ── */
+  .top-bar { display: flex; gap: 8px; width: 100%; flex-shrink: 0; }
   .stat-box {
-    flex:1; background:var(--surface); border:1px solid var(--border);
-    border-radius:8px; padding:6px 8px; text-align:center;
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 5px 8px; text-align: center;
   }
   .stat-label {
-    font-size:0.5rem; letter-spacing:0.2em; color:var(--text-dim);
-    text-transform:uppercase; display:block; margin-bottom:1px;
+    font-size: 0.48rem; letter-spacing: 0.2em; color: var(--text-dim);
+    text-transform: uppercase; display: block; margin-bottom: 1px;
   }
   .stat-value {
-    font-size:1.3rem; font-weight:500; color:var(--gold);
-    font-family:'Playfair Display',serif; line-height:1;
+    font-size: 1.2rem; font-weight: 500; color: var(--gold);
+    font-family: 'Playfair Display', serif; line-height: 1;
   }
 
-  /* Timer bar */
+  /* ── Timer ── */
   .timer-bar {
-    width:100%; height:3px; background:var(--surface2);
-    border-radius:2px; flex-shrink:0; margin:3px 0;
+    width: 100%; height: 3px; background: var(--surface2);
+    border-radius: 2px; flex-shrink: 0;
   }
   .timer-fill {
-    height:100%; background:var(--gold);
-    border-radius:2px; transition:width 1s linear, background 0.3s;
+    height: 100%; background: var(--gold);
+    border-radius: 2px; transition: width 1s linear, background 0.3s;
   }
-  .timer-fill.urgent { background:var(--red); }
+  .timer-fill.urgent { background: var(--red); }
 
-  /* Word display */
+  /* ── Mot en cours ── */
   .current-word {
-    height:36px; display:flex; align-items:center;
-    justify-content:center; gap:3px; flex-shrink:0;
+    height: 32px; display: flex; align-items: center;
+    justify-content: center; gap: 2px; flex-shrink: 0;
   }
   .word-letter {
-    font-family:'Playfair Display',serif; font-size:1.35rem;
-    font-weight:700; color:var(--gold-light);
-    animation:letterPop .12s ease-out;
+    font-family: 'Playfair Display', serif; font-size: 1.25rem;
+    font-weight: 700; color: var(--gold-light);
+    animation: letterPop .12s ease-out;
   }
   @keyframes letterPop {
-    0%  { transform:scale(.6) translateY(4px); opacity:0; }
-    100%{ transform:scale(1)  translateY(0);   opacity:1; }
+    0%  { transform: scale(.6) translateY(4px); opacity: 0; }
+    100%{ transform: scale(1)  translateY(0);   opacity: 1; }
   }
   .word-status {
-    font-size:.65rem; letter-spacing:.18em;
-    height:16px; text-align:center; flex-shrink:0;
+    font-size: .62rem; letter-spacing: .15em;
+    height: 15px; text-align: center; flex-shrink: 0;
   }
-  .word-status.valid   { color:var(--green); }
-  .word-status.invalid { color:var(--red); }
-  .word-status.short   { color:var(--text-dim); }
+  .word-status.valid   { color: var(--green); }
+  .word-status.invalid { color: var(--red); }
+  .word-status.short   { color: var(--text-dim); }
 
-  /* ── GRID — taille calculée pour remplir l'espace restant ── */
+  /* ══════════════════════════════════════
+     GRILLE
+     Taille fixée par --tile-size calculée
+     en CSS, sans aucun JS.
+  ══════════════════════════════════════ */
   .grid-container {
-    position:relative; touch-action:none;
-    /* La grille prend tout l'espace vertical libre */
-    flex:1 1 0;
-    display:flex; align-items:center; justify-content:center;
-    width:100%;
-    min-height:0; /* important pour que flex:1 fonctionne */
+    position: relative;
+    touch-action: none;
+    flex-shrink: 0;           /* taille déterminée par la grille elle-même */
+    /* centrage au cas où l'écran est large */
+    align-self: center;
   }
   .grid {
-    display:grid; grid-template-columns:repeat(4,1fr);
-    /* Côté = min(largeur dispo, hauteur dispo) */
-    width: min(
-      calc(100vw - 24px),
-      calc(var(--grid-max-h, 100vh) - 0px)
-    );
-    aspect-ratio:1; gap:min(2vw, 10px);
+    display: grid;
+    grid-template-columns: repeat(4, var(--tile-size));
+    grid-template-rows:    repeat(4, var(--tile-size));
+    gap: var(--gap);
   }
   .tile {
-    aspect-ratio:1;
-    background:var(--tile-bg); border:1.5px solid var(--tile-border);
-    border-radius:min(3vw,14px);
-    display:flex; align-items:center; justify-content:center;
-    font-family:'Playfair Display',serif;
-    font-size:min(7vw,7vh,2rem);
-    font-weight:700; color:var(--cream);
-    cursor:pointer; position:relative;
-    transition:background .12s, border-color .12s, transform .1s, box-shadow .12s;
-    overflow:hidden;
+    width:  var(--tile-size);
+    height: var(--tile-size);
+    background: var(--tile-bg); border: 1.5px solid var(--tile-border);
+    border-radius: calc(var(--tile-size) * 0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: calc(var(--tile-size) * 0.42);
+    font-weight: 700; color: var(--cream);
+    cursor: pointer; position: relative;
+    transition: background .12s, border-color .12s, transform .1s, box-shadow .12s;
+    overflow: hidden;
   }
   .tile::after {
-    content:''; position:absolute; inset:0;
-    background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.06),transparent 70%);
-    border-radius:inherit; pointer-events:none;
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.06), transparent 70%);
+    border-radius: inherit; pointer-events: none;
   }
   .tile.selected {
-    background:var(--tile-active); border-color:var(--gold);
-    box-shadow:0 0 0 1px var(--gold),0 4px 16px rgba(200,169,110,.25);
-    color:var(--gold-light); transform:scale(1.06); z-index:2;
+    background: var(--tile-active); border-color: var(--gold);
+    box-shadow: 0 0 0 1px var(--gold), 0 4px 16px rgba(200,169,110,.25);
+    color: var(--gold-light); transform: scale(1.06); z-index: 2;
   }
-  .tile.path { background:#201c30; border-color:#5a4a80; color:#b09ad8; }
-  .tile.hidden-letter { color:transparent !important; }
+  .tile.path { background: #201c30; border-color: #5a4a80; color: #b09ad8; }
+  .tile.hidden-letter { color: transparent !important; }
 
   @keyframes tileReveal {
-    0%  { transform:rotateY(90deg) scale(.8); opacity:0; }
-    60% { transform:rotateY(-8deg) scale(1.05); }
-    100%{ transform:rotateY(0deg)  scale(1);    opacity:1; }
+    0%  { transform: rotateY(90deg) scale(.8); opacity: 0; }
+    60% { transform: rotateY(-8deg) scale(1.05); }
+    100%{ transform: rotateY(0deg)  scale(1);   opacity: 1; }
   }
-  .tile.reveal { animation:tileReveal .35s ease-out forwards; }
+  .tile.reveal { animation: tileReveal .35s ease-out forwards; }
 
   @keyframes tileUsed {
-    0%  { transform:scale(1.06); }
-    50% { transform:scale(1.12); background:#2a4020; border-color:var(--green); }
-    100%{ transform:scale(1); }
+    0%  { transform: scale(1.06); }
+    50% { transform: scale(1.12); background: #2a4020; border-color: var(--green); }
+    100%{ transform: scale(1); }
   }
 
-  /* SVG path overlay */
+  /* ── SVG chemin ── */
   .path-svg {
-    position:absolute; top:0; left:0; width:100%; height:100%;
-    pointer-events:none; z-index:1;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 1;
   }
   .path-svg path {
-    fill:none; stroke:var(--gold); stroke-width:3;
-    stroke-linecap:round; stroke-linejoin:round;
-    opacity:.5; filter:drop-shadow(0 0 4px rgba(200,169,110,.6));
+    fill: none; stroke: var(--gold); stroke-width: 3;
+    stroke-linecap: round; stroke-linejoin: round;
+    opacity: .5; filter: drop-shadow(0 0 4px rgba(200,169,110,.6));
   }
 
-  /* ── WORDS FOUND ── */
-  .words-section {
-    width:100%; flex-shrink:0;
-    padding:4px 0 2px;
-  }
+  /* ── Mots trouvés ── */
+  .words-section { width: 100%; flex-shrink: 0; min-height: 0; }
   .words-header {
-    display:flex; justify-content:space-between;
-    align-items:center; margin-bottom:5px;
+    display: flex; justify-content: space-between;
+    align-items: center; margin-bottom: 4px;
   }
-  .words-label { font-size:.55rem; letter-spacing:.22em; color:var(--text-dim); text-transform:uppercase; }
-  .words-count { font-size:.55rem; color:var(--text-dim); }
-  .words-list  { display:flex; flex-wrap:wrap; gap:5px; max-height:60px; overflow-y:auto; }
+  .words-label { font-size: .52rem; letter-spacing: .2em; color: var(--text-dim); text-transform: uppercase; }
+  .words-count { font-size: .52rem; color: var(--text-dim); }
+  .words-list  {
+    display: flex; flex-wrap: wrap; gap: 4px;
+    max-height: 52px; overflow-y: auto;
+  }
   .word-chip {
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:5px; padding:2px 7px;
-    font-size:.7rem; color:var(--gold);
-    letter-spacing:.04em; animation:chipIn .2s ease-out;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 5px; padding: 2px 6px;
+    font-size: .68rem; color: var(--gold);
+    animation: chipIn .2s ease-out;
   }
   @keyframes chipIn { from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)} }
 
-  /* ── NOUVEAU bouton discret en bas ── */
-  .controls { width:100%; display:flex; justify-content:center; flex-shrink:0; padding:5px 0 2px; }
+  /* ── Bouton Nouvelle partie ── */
+  .controls { width: 100%; display: flex; justify-content: center; flex-shrink: 0; }
   .btn-new {
-    padding:8px 28px;
-    border:1px solid var(--border); border-radius:8px;
-    background:transparent; color:var(--text-dim);
-    font-family:'DM Mono',monospace; font-size:.65rem;
-    letter-spacing:.15em; text-transform:uppercase;
-    cursor:pointer; transition:all .15s;
+    padding: 7px 24px;
+    border: 1px solid var(--border); border-radius: 7px;
+    background: transparent; color: var(--text-dim);
+    font-family: 'DM Mono', monospace; font-size: .6rem;
+    letter-spacing: .15em; text-transform: uppercase;
+    cursor: pointer; transition: all .15s;
   }
-  .btn-new:hover { border-color:var(--gold); color:var(--gold); }
+  .btn-new:hover { border-color: var(--gold); color: var(--gold); }
 
-  /* ── SCORE POPUP ── */
+  /* ── Score popup ── */
   .score-popup {
-    position:fixed; pointer-events:none;
-    font-family:'Playfair Display',serif;
-    font-size:1.5rem; font-weight:700; color:var(--gold);
-    z-index:500; animation:floatUp 1s ease-out forwards;
+    position: fixed; pointer-events: none;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem; font-weight: 700; color: var(--gold);
+    z-index: 500; animation: floatUp 1s ease-out forwards;
   }
   @keyframes floatUp {
-    0%  { opacity:1; transform:translateY(0) scale(1); }
-    100%{ opacity:0; transform:translateY(-60px) scale(1.3); }
+    0%  { opacity: 1; transform: translateY(0) scale(1); }
+    100%{ opacity: 0; transform: translateY(-55px) scale(1.3); }
   }
 
-  /* ── GAME OVER ── */
+  /* ── Fin de partie ── */
   .overlay {
-    position:fixed; inset:0; background:rgba(13,13,15,.93);
-    display:flex; flex-direction:column;
-    align-items:center; justify-content:center;
-    z-index:200; backdrop-filter:blur(8px); animation:fadeIn .3s ease;
-    gap:0; padding:24px;
+    position: fixed; inset: 0; background: rgba(13,13,15,.93);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 200; backdrop-filter: blur(8px); animation: fadeIn .3s ease;
+    gap: 0; padding: 24px;
   }
   @keyframes fadeIn { from{opacity:0} to{opacity:1} }
   .overlay h2 {
-    font-family:'Playfair Display',serif; font-size:2.2rem;
-    color:var(--gold); margin-bottom:6px;
+    font-family: 'Playfair Display', serif; font-size: 2.2rem;
+    color: var(--gold); margin-bottom: 6px;
   }
   .final-score {
-    font-size:4rem; font-family:'Playfair Display',serif;
-    color:var(--gold-light); line-height:1; margin-bottom:4px;
+    font-size: 4rem; font-family: 'Playfair Display', serif;
+    color: var(--gold-light); line-height: 1; margin-bottom: 4px;
   }
   .final-sub {
-    font-size:.68rem; letter-spacing:.22em; color:var(--text-dim);
-    text-transform:uppercase; margin-bottom:20px;
+    font-size: .68rem; letter-spacing: .22em; color: var(--text-dim);
+    text-transform: uppercase; margin-bottom: 20px;
   }
   .found-words {
-    max-height:180px; overflow-y:auto;
-    display:flex; flex-wrap:wrap; gap:5px;
-    justify-content:center; max-width:340px; margin-bottom:24px;
+    max-height: 180px; overflow-y: auto;
+    display: flex; flex-wrap: wrap; gap: 5px;
+    justify-content: center; max-width: 340px; margin-bottom: 24px;
   }
   .btn-replay {
-    padding:13px 40px;
-    border:2px solid var(--gold); border-radius:10px;
-    background:var(--gold); color:#0d0d0f;
-    font-family:'DM Mono',monospace; font-size:.8rem;
-    letter-spacing:.15em; text-transform:uppercase;
-    cursor:pointer; font-weight:500; transition:background .15s;
+    padding: 13px 40px;
+    border: 2px solid var(--gold); border-radius: 10px;
+    background: var(--gold); color: #0d0d0f;
+    font-family: 'DM Mono', monospace; font-size: .8rem;
+    letter-spacing: .15em; text-transform: uppercase;
+    cursor: pointer; font-weight: 500; transition: background .15s;
+    width: auto; flex: none;
   }
-  .btn-replay:hover { background:var(--gold-light); }
+  .btn-replay:hover { background: var(--gold-light); }
 
-  /* ── NOTIF ── */
+  /* ── Bouton "Pas d'accord" ── */
+  #contestBtn {
+    display: none;
+    padding: 5px 14px;
+    border: 1px solid var(--red); border-radius: 6px;
+    background: transparent; color: var(--red);
+    font-family: 'DM Mono', monospace; font-size: .6rem;
+    letter-spacing: .12em; text-transform: uppercase;
+    cursor: pointer; transition: all .15s; flex-shrink: 0;
+    animation: chipIn .15s ease-out;
+  }
+  #contestBtn:hover { background: rgba(224,82,82,.12); }
+
+  /* ── Mots contestés dans l'overlay fin de partie ── */
+  .contested-section { width: 100%; max-width: 340px; margin-bottom: 18px; }
+  .contested-title {
+    font-size: .55rem; letter-spacing: .22em; color: var(--red);
+    text-transform: uppercase; margin-bottom: 6px; text-align: center;
+  }
+  .contested-list { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; }
+  .word-chip.contested {
+    border-color: rgba(224,82,82,.4); color: var(--red);
+    background: rgba(224,82,82,.06);
+  }
+
+  /* ── Notification ── */
   .notif {
-    position:fixed; top:40%; left:50%; transform:translate(-50%,-50%);
-    background:var(--surface); border:1px solid var(--border);
-    border-radius:10px; padding:9px 20px;
-    font-size:.75rem; color:var(--text-dim);
-    letter-spacing:.1em; z-index:300;
-    animation:notifAnim 1.4s ease-out forwards;
+    position: fixed; top: 40%; left: 50%; transform: translate(-50%,-50%);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 20px;
+    font-size: .75rem; color: var(--text-dim);
+    letter-spacing: .1em; z-index: 300;
+    animation: notifAnim 1.4s ease-out forwards; pointer-events: none;
   }
   @keyframes notifAnim {
     0%  { opacity:0; transform:translate(-50%,-50%) scale(.9); }
@@ -311,7 +367,7 @@
 </head>
 <body>
 
-<!-- ═══ LOADING SCREEN ═══ -->
+<!-- ════ LOADING ════ -->
 <div id="loadingScreen">
   <h2>Boggle</h2>
   <div id="loadingMsg">Chargement du dictionnaire…</div>
@@ -320,7 +376,7 @@
   <button id="playBtn" onclick="startGame()">Jouer</button>
 </div>
 
-<!-- ═══ GAME UI ═══ -->
+<!-- ════ JEU ════ -->
 <div id="gameUI">
 
   <div id="gameHeader">
@@ -337,7 +393,10 @@
   <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
 
   <div class="current-word" id="currentWord"></div>
-  <div class="word-status"  id="wordStatus"></div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:8px;height:18px;flex-shrink:0;">
+    <div class="word-status" id="wordStatus" style="height:auto;"></div>
+    <button id="contestBtn" onclick="contestWord()">Pas d&apos;accord</button>
+  </div>
 
   <div class="grid-container" id="gridContainer">
     <svg class="path-svg" id="pathSvg"></svg>
@@ -356,15 +415,15 @@
     <button class="btn-new" onclick="newGame()">Nouvelle partie</button>
   </div>
 
-</div><!-- #gameUI -->
+</div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // SCORE BOGGLE OFFICIEL
-// 3–4 lettres → 1 pt | 5 → 2 | 6 → 3 | 7 → 5 | 8+ → 11
-// ═══════════════════════════════════════════════════════════════
-function calcScore(word) {
-  const n = word.length;
+// 3–4 lettres → 1pt | 5 → 2 | 6 → 3 | 7 → 5 | 8+ → 11
+// ══════════════════════════════════════════════════════════
+function calcScore(w) {
+  const n = w.length;
   if (n <= 4) return 1;
   if (n === 5) return 2;
   if (n === 6) return 3;
@@ -372,26 +431,24 @@ function calcScore(word) {
   return 11;
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // DICTIONNAIRE  —  TSV même origine (GitHub Pages)
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 const TSV_URL = 'Lexique383.tsv';
 const dictionary = new Set();
 
-// Normalisation : retire les diacritiques pour matcher les dés sans accent
+// Normalisation : retire les diacritiques (naît → NAIT)
 const normalize = s =>
-  s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase();
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 
 async function loadDictionary() {
   setMsg('Chargement du dictionnaire…'); setBar(5);
-
   let text;
   try {
     const resp = await fetch(TSV_URL);
     if (!resp.ok) throw new Error(
       `HTTP ${resp.status} — Lexique383.tsv introuvable.\nVérifiez que le fichier est à la racine du dépôt.`
     );
-
     const reader = resp.body.getReader();
     const chunks = []; let received = 0;
     const ESTIMATE = 28 * 1024 * 1024;
@@ -404,11 +461,9 @@ async function loadDictionary() {
     const merged = new Uint8Array(received);
     let off = 0; for (const c of chunks) { merged.set(c, off); off += c.length; }
     text = new TextDecoder('utf-8').decode(merged);
-
   } catch(err) { showError(err.message); return; }
 
   setMsg('Extraction des mots…'); setBar(62);
-
   const lines = text.split('\n');
   let orthoCol = 0;
   if (lines[0]) {
@@ -426,7 +481,6 @@ async function loadDictionary() {
     } else { word = line.split('\t')[orthoCol]; }
     if (!word) continue;
     const len = word.length;
-    // On stocke la forme SANS diacritiques (longueur identique pour les mots français)
     if (len >= 3 && len <= 16 && reAlpha.test(word)) dictionary.add(normalize(word));
     n++;
     if (n % 50000 === 0) {
@@ -434,15 +488,11 @@ async function loadDictionary() {
       await new Promise(r => setTimeout(r, 0));
     }
   }
-
   setBar(100);
   const count = dictionary.size.toLocaleString('fr-FR');
   setMsg(`${count} formes chargées ✓`);
-  document.getElementById('dictInfo').textContent =
-    `Lexique383 · ${count} formes`;
-
+  document.getElementById('dictInfo').textContent = `Lexique383 · ${count} formes`;
   await new Promise(r => setTimeout(r, 400));
-  // Afficher le bouton Jouer, masquer la barre
   document.getElementById('loadingMsg').textContent = 'Prêt !';
   document.querySelector('.bar-wrap').style.display = 'none';
   document.getElementById('playBtn').style.display = 'block';
@@ -454,12 +504,12 @@ function showError(msg) {
   document.getElementById('loadingMsg').style.display = 'none';
   const el = document.getElementById('errorMsg');
   el.style.display = 'block';
-  el.innerHTML = msg.replace(/\n/g,'<br>');
+  el.innerHTML = msg.replace(/\n/g, '<br>');
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // CONSTANTES
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 const GAME_DURATION = 180;
 const N = 4;
 
@@ -469,16 +519,17 @@ const FRENCH_DICE = [
   'HMCPSD','ENSITR'
 ];
 
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // ÉTAT
-// ═══════════════════════════════════════════════════════════════
-let board=[], selectedPath=[], foundWords=new Set();
+// ══════════════════════════════════════════════════════════
+let board=[], selectedPath=[], foundWords=new Set(), contestedWords=new Set();
 let score=0, timeLeft=GAME_DURATION, gameActive=false;
 let timerInterval=null, isDragging=false, gestureStart=null;
+let lastRejectedWord = '';
 
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // HELPERS
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 const isValidWord = w => w.length >= 3 && dictionary.has(normalize(w));
 const isAdjacent  = (a,b) => {
   const dr=Math.abs((a/N|0)-(b/N|0)), dc=Math.abs(a%N-b%N);
@@ -487,9 +538,9 @@ const isAdjacent  = (a,b) => {
 const isDiag = (a,b) =>
   Math.abs((a/N|0)-(b/N|0))===1 && Math.abs(a%N-b%N)===1;
 
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // GÉNÉRATION
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 function generateBoard() {
   const dice = [...FRENCH_DICE];
   for (let i=dice.length-1;i>0;i--) {
@@ -498,33 +549,23 @@ function generateBoard() {
   return dice.map(d => d[Math.random()*d.length|0]);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // RENDU
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 function renderBoard(hidden=false) {
-  const g = document.getElementById('grid'); g.innerHTML='';
+  const g = document.getElementById('grid'); g.innerHTML = '';
   board.forEach((l,i) => {
     const t = document.createElement('div');
-    t.className = 'tile' + (hidden?' hidden-letter':'');
+    t.className = 'tile' + (hidden ? ' hidden-letter' : '');
     t.dataset.index = i;
     t.textContent = l;
     g.appendChild(t);
   });
-  // Calcul dynamique de la taille max de la grille selon l'espace vertical libre
-  requestAnimationFrame(updateGridSize);
-}
-
-function updateGridSize() {
-  const gc = document.getElementById('gridContainer');
-  const h = gc.getBoundingClientRect().height;
-  const w = gc.getBoundingClientRect().width;
-  const side = Math.min(w, h) - 4;
-  document.getElementById('grid').style.width = side + 'px';
 }
 
 function updateTileStates() {
   document.querySelectorAll('.tile').forEach(t => {
-    const i=+t.dataset.index;
+    const i = +t.dataset.index;
     const isLast = selectedPath.length>0 && selectedPath[selectedPath.length-1]===i;
     t.classList.toggle('selected', isLast);
     t.classList.toggle('path', selectedPath.includes(i) && !isLast);
@@ -535,16 +576,16 @@ function updateTileStates() {
 function getTileCenter(i) {
   const wrap = document.getElementById('gridContainer').getBoundingClientRect();
   const tile = document.querySelector(`.tile[data-index="${i}"]`).getBoundingClientRect();
-  return { x:tile.left-wrap.left+tile.width/2, y:tile.top-wrap.top+tile.height/2 };
+  return { x: tile.left-wrap.left+tile.width/2, y: tile.top-wrap.top+tile.height/2 };
 }
 
 function drawPath() {
   const svg = document.getElementById('pathSvg');
   if (selectedPath.length < 2) { svg.innerHTML=''; return; }
   const wrap = document.getElementById('gridContainer');
-  svg.setAttribute('viewBox',`0 0 ${wrap.offsetWidth} ${wrap.offsetHeight}`);
+  svg.setAttribute('viewBox', `0 0 ${wrap.offsetWidth} ${wrap.offsetHeight}`);
   const d = selectedPath.map((i,k) => {
-    const p=getTileCenter(i);
+    const p = getTileCenter(i);
     return `${k?'L':'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
   }).join(' ');
   svg.innerHTML = `<path d="${d}"/>`;
@@ -555,61 +596,66 @@ function updateWordDisplay() {
   document.getElementById('currentWord').innerHTML =
     word.split('').map(l=>`<span class="word-letter">${l}</span>`).join('');
   const st = document.getElementById('wordStatus');
+  const cb = document.getElementById('contestBtn');
+  cb.style.display = 'none'; // masqué par défaut pendant le glissement
   if (word.length < 3) {
     st.textContent = word.length ? `${word.length} lettre${word.length>1?'s':''}` : '';
     st.className = 'word-status short';
   } else if (foundWords.has(word)) {
-    st.textContent='Déjà trouvé'; st.className='word-status invalid';
+    st.textContent = 'Déjà trouvé'; st.className = 'word-status invalid';
   } else if (isValidWord(word)) {
-    const p=calcScore(word);
-    st.textContent=`✓ +${p} pt${p>1?'s':''}`; st.className='word-status valid';
+    const p = calcScore(word);
+    st.textContent = `✓ +${p} pt${p>1?'s':''}`; st.className = 'word-status valid';
   } else {
-    st.textContent='Absent du dictionnaire'; st.className='word-status invalid';
+    st.textContent = 'Absent du dictionnaire'; st.className = 'word-status invalid';
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // GESTES — détection diagonale stricte
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 function getTileAtPoint(cx, cy) {
   const wrap = document.getElementById('gridContainer').getBoundingClientRect();
   const rx=cx-wrap.left, ry=cy-wrap.top;
   let best=null, bestD=Infinity;
   document.querySelectorAll('.tile').forEach(t => {
-    const r=t.getBoundingClientRect();
+    const r = t.getBoundingClientRect();
     const tcx=r.left-wrap.left+r.width/2, tcy=r.top-wrap.top+r.height/2;
-    const d=Math.hypot(rx-tcx, ry-tcy);
+    const d = Math.hypot(rx-tcx, ry-tcy);
     if (d < r.width*0.47 && d < bestD) { bestD=d; best=+t.dataset.index; }
   });
   return best;
 }
 
-function diagonalOk(sx, sy, ex, ey) {
+function diagonalOk(sx,sy,ex,ey) {
   const dx=ex-sx, dy=ey-sy;
   if (Math.hypot(dx,dy) < 8) return false;
-  let a=Math.abs(Math.atan2(dy,dx)*180/Math.PI);
-  if (a>90) a=180-a;
-  return a>=22 && a<=68;
+  let a = Math.abs(Math.atan2(dy,dx)*180/Math.PI);
+  if (a > 90) a = 180-a;
+  return a >= 22 && a <= 68;
 }
 
-function onStart(x, y) {
+function onStart(x,y) {
   if (!gameActive) return;
   isDragging=true; selectedPath=[]; gestureStart=null;
-  const t=getTileAtPoint(x,y);
-  if (t!==null) { selectedPath=[t]; gestureStart={x,y}; }
+  // Masquer le bouton "Pas d'accord" dès qu'on recommence à glisser
+  document.getElementById('contestBtn').style.display = 'none';
+  lastRejectedWord = '';
+  const t = getTileAtPoint(x,y);
+  if (t !== null) { selectedPath=[t]; gestureStart={x,y}; }
   updateTileStates(); updateWordDisplay();
 }
 
-function onMove(x, y) {
+function onMove(x,y) {
   if (!isDragging||!gameActive) return;
-  const t=getTileAtPoint(x,y);
+  const t = getTileAtPoint(x,y);
   if (t===null) return;
-  const last=selectedPath[selectedPath.length-1];
+  const last = selectedPath[selectedPath.length-1];
   if (selectedPath.length>=2 && t===selectedPath[selectedPath.length-2]) {
     selectedPath.pop(); gestureStart={x,y};
     updateTileStates(); updateWordDisplay(); return;
   }
-  if (t===last||selectedPath.includes(t)) return;
+  if (t===last || selectedPath.includes(t)) return;
   if (!isAdjacent(last,t)) return;
   if (isDiag(last,t) && !(gestureStart && diagonalOk(gestureStart.x,gestureStart.y,x,y))) return;
   selectedPath.push(t); gestureStart={x,y};
@@ -619,35 +665,42 @@ function onMove(x, y) {
 function onEnd() {
   if (!isDragging) return;
   isDragging=false;
-  const word=selectedPath.map(i=>board[i]).join('');
+  const word = selectedPath.map(i=>board[i]).join('');
+  const cb = document.getElementById('contestBtn');
+  cb.style.display = 'none';
+  lastRejectedWord = '';
 
   if (word.length>=3 && isValidWord(word) && !foundWords.has(word)) {
-    const pts=calcScore(word);
+    const pts = calcScore(word);
     score+=pts; foundWords.add(word);
-    document.getElementById('score').textContent=score;
-    document.getElementById('wordCount').textContent=foundWords.size;
-    document.getElementById('wordsCountLabel').textContent=
+    document.getElementById('score').textContent = score;
+    document.getElementById('wordCount').textContent = foundWords.size;
+    document.getElementById('wordsCountLabel').textContent =
       `${foundWords.size} mot${foundWords.size>1?'s':''}`;
 
     selectedPath.forEach(i => {
-      const t=document.querySelector(`.tile[data-index="${i}"]`);
-      if(t){ t.style.animation='none'; void t.offsetWidth; t.style.animation='tileUsed .4s ease-out'; }
+      const t = document.querySelector(`.tile[data-index="${i}"]`);
+      if (t) { t.style.animation='none'; void t.offsetWidth; t.style.animation='tileUsed .4s ease-out'; }
     });
 
-    const chip=document.createElement('div');
+    const chip = document.createElement('div');
     chip.className='word-chip';
     chip.textContent=`${word} (+${pts})`;
     document.getElementById('wordsList').prepend(chip);
 
-    const center=getTileCenter(selectedPath[selectedPath.length-1]);
-    const wr=document.getElementById('gridContainer').getBoundingClientRect();
-    const pop=document.createElement('div');
+    const center = getTileCenter(selectedPath[selectedPath.length-1]);
+    const wr = document.getElementById('gridContainer').getBoundingClientRect();
+    const pop = document.createElement('div');
     pop.className='score-popup'; pop.textContent=`+${pts}`;
     pop.style.left=`${wr.left+center.x}px`; pop.style.top=`${wr.top+center.y-20}px`;
-    document.body.appendChild(pop); setTimeout(()=>pop.remove(),1000);
+    document.body.appendChild(pop); setTimeout(()=>pop.remove(), 1000);
 
   } else if (word.length>=3 && foundWords.has(word)) {
     showNotif('Déjà trouvé !');
+  } else if (word.length>=3 && !isValidWord(word) && !contestedWords.has(word)) {
+    // Mot inconnu : proposer la contestation
+    lastRejectedWord = word;
+    cb.style.display = 'inline-block';
   }
 
   setTimeout(()=>{
@@ -656,106 +709,121 @@ function onEnd() {
     document.getElementById('currentWord').innerHTML='';
     document.getElementById('wordStatus').textContent='';
     updateTileStates();
-  },250);
+    // On garde le bouton visible encore un moment après le reset du chemin
+  }, 250);
+}
+
+function contestWord() {
+  if (!lastRejectedWord) return;
+  contestedWords.add(lastRejectedWord);
+  lastRejectedWord = '';
+  document.getElementById('contestBtn').style.display = 'none';
+  showNotif(`"${contestedWords.size === 1 ? [...contestedWords][0] : [...contestedWords][contestedWords.size-1]}" noté pour vérification`);
 }
 
 function showNotif(msg) {
   document.querySelectorAll('.notif').forEach(n=>n.remove());
-  const n=document.createElement('div'); n.className='notif'; n.textContent=msg;
-  document.body.appendChild(n); setTimeout(()=>n.remove(),1400);
+  const n = document.createElement('div'); n.className='notif'; n.textContent=msg;
+  document.body.appendChild(n); setTimeout(()=>n.remove(), 1400);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // ÉVÉNEMENTS
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 function attachEvents() {
-  const c=document.getElementById('gridContainer');
-  c.addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];onStart(t.clientX,t.clientY);},{passive:false});
-  c.addEventListener('touchmove', e=>{e.preventDefault();const t=e.touches[0];onMove(t.clientX,t.clientY); },{passive:false});
-  c.addEventListener('touchend',  e=>{e.preventDefault();onEnd();},{passive:false});
-  c.addEventListener('mousedown', e=>onStart(e.clientX,e.clientY));
-  window.addEventListener('mousemove',e=>{if(isDragging)onMove(e.clientX,e.clientY);});
-  window.addEventListener('mouseup',  ()=>{if(isDragging)onEnd();});
-  window.addEventListener('resize', ()=>{ if(gameActive||board.length) updateGridSize(); });
+  const c = document.getElementById('gridContainer');
+  c.addEventListener('touchstart', e=>{e.preventDefault();const t=e.touches[0];onStart(t.clientX,t.clientY);},{passive:false});
+  c.addEventListener('touchmove',  e=>{e.preventDefault();const t=e.touches[0];onMove(t.clientX,t.clientY); },{passive:false});
+  c.addEventListener('touchend',   e=>{e.preventDefault();onEnd();},{passive:false});
+  c.addEventListener('mousedown',  e=>onStart(e.clientX,e.clientY));
+  window.addEventListener('mousemove', e=>{if(isDragging) onMove(e.clientX,e.clientY);});
+  window.addEventListener('mouseup',   ()=>{if(isDragging) onEnd();});
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // CONTRÔLE DU JEU
-// ═══════════════════════════════════════════════════════════════
-function newGame() {
-  clearInterval(timerInterval); gameActive=false;
-  board=generateBoard(); selectedPath=[]; foundWords=new Set();
-  score=0; timeLeft=GAME_DURATION;
-  renderBoard(true); updateTileStates();
-  document.getElementById('score').textContent='0';
-  document.getElementById('timer').textContent='3:00';
-  document.getElementById('wordCount').textContent='0';
-  document.getElementById('wordsCountLabel').textContent='0 mot';
-  document.getElementById('wordsList').innerHTML='';
-  document.getElementById('currentWord').innerHTML='';
-  document.getElementById('wordStatus').textContent='';
-  document.getElementById('pathSvg').innerHTML='';
-  document.getElementById('timerFill').style.width='100%';
+// ══════════════════════════════════════════════════════════
+function resetUI() {
+  document.getElementById('score').textContent = '0';
+  document.getElementById('timer').textContent = '3:00';
+  document.getElementById('wordCount').textContent = '0';
+  document.getElementById('wordsCountLabel').textContent = '0 mot';
+  document.getElementById('wordsList').innerHTML = '';
+  document.getElementById('currentWord').innerHTML = '';
+  document.getElementById('wordStatus').textContent = '';
+  document.getElementById('pathSvg').innerHTML = '';
+  document.getElementById('timerFill').style.width = '100%';
   document.getElementById('timerFill').classList.remove('urgent');
+  document.getElementById('contestBtn').style.display = 'none';
   document.querySelector('.overlay')?.remove();
-  // Révéler les tuiles immédiatement pour "Nouvelle partie"
-  revealTiles();
-  startTimer();
-}
-
-function startGame() {
-  // Appelé depuis le bouton Jouer de l'écran de chargement
-  document.getElementById('loadingScreen').style.display='none';
-  document.getElementById('gameUI').style.display='flex';
-
-  board=generateBoard(); selectedPath=[]; foundWords=new Set();
-  score=0; timeLeft=GAME_DURATION;
-  renderBoard(true); updateTileStates();
-
-  // Petite pause avant révélation pour laisser le layout s'installer
-  setTimeout(revealTiles, 80);
-  startTimer();
+  contestedWords = new Set();
+  lastRejectedWord = '';
 }
 
 function revealTiles() {
-  board=generateBoard();
+  // Nouveau mélange + révélation animée
+  board = generateBoard();
   renderBoard(true);
   updateTileStates();
   document.querySelectorAll('.tile').forEach((t,i) => {
     setTimeout(()=>{
       t.classList.remove('hidden-letter');
       t.classList.add('reveal');
-    }, i*40);
+    }, i * 40);
   });
 }
 
 function startTimer() {
-  gameActive=true;
-  timerInterval=setInterval(()=>{
+  gameActive = true;
+  timerInterval = setInterval(()=>{
     timeLeft--;
     const m=timeLeft/60|0, s=timeLeft%60;
-    document.getElementById('timer').textContent=`${m}:${s.toString().padStart(2,'0')}`;
-    document.getElementById('timerFill').style.width=`${(timeLeft/GAME_DURATION)*100}%`;
-    if(timeLeft<=30) document.getElementById('timerFill').classList.add('urgent');
-    if(timeLeft<=0){ clearInterval(timerInterval); gameActive=false; showGameOver(); }
-  },1000);
+    document.getElementById('timer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+    document.getElementById('timerFill').style.width = `${(timeLeft/GAME_DURATION)*100}%`;
+    if (timeLeft<=30) document.getElementById('timerFill').classList.add('urgent');
+    if (timeLeft<=0) { clearInterval(timerInterval); gameActive=false; showGameOver(); }
+  }, 1000);
+}
+
+function startGame() {
+  // Depuis le bouton Jouer de l'écran de chargement
+  document.getElementById('loadingScreen').style.display = 'none';
+  document.getElementById('gameUI').style.display = 'flex';
+  selectedPath=[]; foundWords=new Set(); score=0; timeLeft=GAME_DURATION;
+  resetUI();
+  setTimeout(()=>{ revealTiles(); startTimer(); }, 60);
+}
+
+function newGame() {
+  clearInterval(timerInterval); gameActive=false;
+  selectedPath=[]; foundWords=new Set(); score=0; timeLeft=GAME_DURATION;
+  resetUI();
+  revealTiles();
+  startTimer();
 }
 
 function showGameOver() {
-  const words=[...foundWords].sort((a,b)=>b.length-a.length);
-  const ov=document.createElement('div'); ov.className='overlay';
-  ov.innerHTML=`
+  const words = [...foundWords].sort((a,b)=>b.length-a.length);
+  const contested = [...contestedWords].sort((a,b)=>b.length-a.length);
+  const contestedHTML = contested.length ? `
+    <div class="contested-section">
+      <div class="contested-title">À vérifier (${contested.length} mot${contested.length>1?'s':''})</div>
+      <div class="contested-list">${contested.map(w=>`<div class="word-chip contested">${w}</div>`).join('')}</div>
+    </div>` : '';
+  const ov = document.createElement('div'); ov.className='overlay';
+  ov.innerHTML = `
     <h2>Fin de partie</h2>
     <div class="final-score">${score}</div>
     <div class="final-sub">point${score!==1?'s':''} — ${foundWords.size} mot${foundWords.size!==1?'s':''}</div>
     <div class="found-words">${words.map(w=>`<div class="word-chip">${w}&nbsp;(+${calcScore(w)})</div>`).join('')}</div>
+    ${contestedHTML}
     <button class="btn-replay" onclick="newGame()">Rejouer</button>`;
   document.body.appendChild(ov);
 }
 
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 // BOOT
-// ═══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
 attachEvents();
 loadDictionary();
 </script>
