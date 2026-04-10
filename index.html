@@ -401,15 +401,13 @@
   <div id="sharedGamesList"></div>
 </div>
 
-<script type="module">
-import { initializeApp }    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimestamp }
-  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-// ── Firebase init ──
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+// ══ Firebase init ══
 let db = null;
 try {
-  const app = initializeApp({
+  const app = firebase.initializeApp({
     apiKey: "AIzaSyCYkcBWDpBzRDaGlaVB5XiVDBWcxsimHMo",
     authDomain: "boggle-7b3e5.firebaseapp.com",
     projectId: "boggle-7b3e5",
@@ -417,7 +415,7 @@ try {
     messagingSenderId: "523024246479",
     appId: "1:523024246479:web:bc1af588e9e3fff18df9ba"
   });
-  db = getFirestore(app);
+  db = firebase.firestore();
 } catch(e) {
   console.error('Firebase init failed:', e);
 }
@@ -599,9 +597,9 @@ async function createGame() {
   const code=generateCode();
   const boardLetters=boardFromSeed(code);
   try {
-    await setDoc(doc(db,'games',code), {
+    await db.collection('games').doc(code).set({
       board: boardLetters,
-      createdAt: serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       expiresAt: Date.now()+MULTI_TTL_MS,
       players: {}
     });
@@ -617,7 +615,7 @@ async function startAsCreator() {
   const pseudo=document.getElementById('creatorPseudoInput').value.trim();
   if (!pseudo) { document.getElementById('codeError').textContent='Entrez votre pseudo.'; return; }
   currentPseudo=pseudo; currentMode='multi';
-  const snap=await getDoc(doc(db,'games',currentGameCode));
+  const snap=await db.collection('games').doc(currentGameCode).get();
   board=snap.data().board;
   saveLocalGame(currentGameCode,pseudo);
   launchGame();
@@ -634,7 +632,7 @@ async function doJoin() {
   if (!code)   { document.getElementById('joinError').textContent='Entrez un code.'; return; }
   if (!pseudo) { document.getElementById('joinError').textContent='Entrez votre pseudo.'; return; }
   let snap;
-  try { snap=await getDoc(doc(db,'games',code)); }
+  try { snap=await db.collection('games').doc(code).get(); }
   catch(e) { document.getElementById('joinError').textContent='Erreur réseau.'; return; }
   if (!snap.exists()) { document.getElementById('joinError').textContent='Code introuvable.'; return; }
   const data=snap.data();
@@ -833,7 +831,7 @@ function showSoloOver(words) {
 }
 
 async function showMultiOver(words) {
-  const snap=await getDoc(doc(db,'games',currentGameCode));
+  const snap=await db.collection('games').doc(currentGameCode).get();
   const players=snap.exists()?snap.data().players||{};
   const ov=document.createElement('div'); ov.className='overlay';
   ov.innerHTML=`
@@ -852,7 +850,7 @@ async function showMultiOver(words) {
 
   // Écoute temps réel
   if (firestoreUnsub) firestoreUnsub();
-  firestoreUnsub=onSnapshot(doc(db,'games',currentGameCode), snap=>{
+  firestoreUnsub=db.collection('games').doc(currentGameCode).onSnapshot(snap=>{
     const lbEl=ov.querySelector('#lbRows'); if(!lbEl)return;
     lbEl.innerHTML=renderLbRows(snap.exists()?snap.data().players||{}:{});
   });
@@ -876,7 +874,7 @@ function renderLbRows(players) {
 // ══════════════════════════════════════════════════════════
 async function saveScore(code, pseudo, sc, words) {
   try {
-    await updateDoc(doc(db,'games',code), {
+    await db.collection('games').doc(code).update({
       [`players.${pseudo}`]: { score:sc, words:words.length, playedAt:Date.now() }
     });
   } catch(e) { showNotif('Erreur enregistrement : '+e.message); }
@@ -937,7 +935,7 @@ async function showSharedPanel() {
 
     // Charger scores
     try {
-      const snap=await getDoc(doc(db,'games',g.code));
+      const snap=await db.collection('games').doc(g.code).get();
       const container=document.getElementById(`sp_${g.code}_${g.pseudo}`); if(!container)continue;
       if (!snap.exists()) { container.innerHTML='<span style="color:var(--red);font-size:.6rem;">Partie introuvable</span>'; continue; }
       const pl=snap.data().players||{};
@@ -964,7 +962,7 @@ async function showSharedPanel() {
       const code=btn.dataset.code, pseudo=btn.dataset.pseudo;
       document.getElementById('sharedPanel').style.display='none';
       goFullscreen(); currentMode='multi'; currentPseudo=pseudo; currentGameCode=code;
-      const snap=await getDoc(doc(db,'games',code));
+      const snap=await db.collection('games').doc(code).get();
       if (!snap.exists()) { showNotif('Partie introuvable.'); return; }
       board=snap.data().board;
       launchGame();
