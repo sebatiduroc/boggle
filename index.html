@@ -589,6 +589,7 @@ function fmtCountdown(ms) {
 
 function showHome() {
   if (_lobbyTimerInterval) { clearInterval(_lobbyTimerInterval); _lobbyTimerInterval = null; }
+  document.getElementById('pseudoModal').style.display = 'none';
   hide('multiScreen','codeScreen','gameUI');
   show('loadingScreen');
   document.getElementById('modeBtns').style.display='flex';
@@ -707,7 +708,8 @@ function goFullscreen() {
 // SOLO
 // ══════════════════════════════════════════════════════════
 function startSolo() {
-  goFullscreen(); currentMode='solo';
+  document.getElementById('pseudoModal').style.display = 'none';
+  goFullscreen(); currentMode='solo'; currentGameCode=''; currentPseudo='';
   document.getElementById('multiInfo').style.display='none';
   hide('loadingScreen');
   show('gameUI');
