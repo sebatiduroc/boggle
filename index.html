@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Boggle Français</title>
 <style>
@@ -832,7 +833,7 @@ function showSoloOver(words) {
 
 async function showMultiOver(words) {
   const snap=await db.collection('games').doc(currentGameCode).get();
-  const players=snap.exists()?snap.data().players||{};
+  const players=snap.exists()?snap.data().players||{}:{};
   const ov=document.createElement('div'); ov.className='overlay';
   ov.innerHTML=`
     <h2>Fin de partie</h2>
