@@ -464,7 +464,8 @@ async function loadDictionary() {
   } catch(err) { showError(err.message); return; }
 
   setMsg('Extraction des mots…'); setBar(62);
-  const lines = text.split('\n');
+  // Supprimer les \r pour gérer les fichiers CRLF (Windows)
+  const lines = text.replace(/\r/g, '').split('\n');
   let orthoCol = 0;
   if (lines[0]) {
     const idx = lines[0].split('\t').findIndex(h => h.trim() === 'ortho');
@@ -477,8 +478,8 @@ async function loadDictionary() {
     let word;
     if (orthoCol === 0) {
       const tab = line.indexOf('\t');
-      word = tab === -1 ? line : line.slice(0, tab);
-    } else { word = line.split('\t')[orthoCol]; }
+      word = tab === -1 ? line.trim() : line.slice(0, tab).trim();
+    } else { word = (line.split('\t')[orthoCol] || '').trim(); }
     if (!word) continue;
     const len = word.length;
     if (len >= 3 && len <= 16 && reAlpha.test(word)) dictionary.add(normalize(word));
