@@ -407,15 +407,20 @@ import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, serverTimesta
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ── Firebase init ──
-const app = initializeApp({
-  apiKey: "AIzaSyCYkcBWDpBzRDaGlaVB5XiVDBWcxsimHMo",
-  authDomain: "boggle-7b3e5.firebaseapp.com",
-  projectId: "boggle-7b3e5",
-  storageBucket: "boggle-7b3e5.firebasestorage.app",
-  messagingSenderId: "523024246479",
-  appId: "1:523024246479:web:bc1af588e9e3fff18df9ba"
-});
-const db = getFirestore(app);
+let db = null;
+try {
+  const app = initializeApp({
+    apiKey: "AIzaSyCYkcBWDpBzRDaGlaVB5XiVDBWcxsimHMo",
+    authDomain: "boggle-7b3e5.firebaseapp.com",
+    projectId: "boggle-7b3e5",
+    storageBucket: "boggle-7b3e5.firebasestorage.app",
+    messagingSenderId: "523024246479",
+    appId: "1:523024246479:web:bc1af588e9e3fff18df9ba"
+  });
+  db = getFirestore(app);
+} catch(e) {
+  console.error('Firebase init failed:', e);
+}
 
 // ══════════════════════════════════════════════════════════
 // CONSTANTES
@@ -589,6 +594,7 @@ function startSolo() {
 // MULTI — CRÉER
 // ══════════════════════════════════════════════════════════
 async function createGame() {
+  if (!db) { showNotif('Firebase non disponible.'); return; }
   goFullscreen();
   const code=generateCode();
   const boardLetters=boardFromSeed(code);
@@ -621,6 +627,7 @@ async function startAsCreator() {
 // MULTI — REJOINDRE
 // ══════════════════════════════════════════════════════════
 async function doJoin() {
+  if (!db) { document.getElementById('joinError').textContent='Firebase non disponible.'; return; }
   const code=document.getElementById('joinCodeInput').value.trim().toUpperCase();
   const pseudo=document.getElementById('joinPseudoInput').value.trim();
   document.getElementById('joinError').textContent='';
