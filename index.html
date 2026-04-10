@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Boggle Français</title>
 <style>
@@ -237,14 +238,26 @@
   .btn-replay:hover { background: var(--gold-light); }
 
   /* ── Leaderboard ── */
-  .leaderboard { width: 100%; max-width: 300px; margin-bottom: 14px; }
+  .leaderboard { width: 100%; max-width: 340px; margin-bottom: 14px; }
   .leaderboard-title { font-size: .55rem; letter-spacing: .22em; color: var(--gold); text-transform: uppercase; margin-bottom: 6px; text-align: center; }
-  .lb-row { display: flex; align-items: center; padding: 5px 10px; border-radius: 6px; margin-bottom: 3px; background: var(--surface); border: 1px solid var(--border); font-size: .66rem; }
+  .lb-row { display: flex; align-items: center; padding: 7px 10px; border-radius: 6px; margin-bottom: 3px; background: var(--surface); border: 1px solid var(--border); font-size: .66rem; cursor: pointer; transition: background .15s; flex-wrap: wrap; }
+  .lb-row:hover { background: var(--surface2); }
   .lb-row.me { border-color: var(--gold); background: rgba(200,169,110,.07); }
   .lb-rank { color: var(--text-dim); width: 18px; flex-shrink: 0; }
   .lb-name { color: var(--cream); flex: 1; margin: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lb-score { color: var(--gold); font-family: 'Playfair Display', serif; font-size: .82rem; flex-shrink: 0; }
+  .lb-stats { display: flex; gap: 10px; flex-shrink: 0; align-items: center; }
+  .lb-score { color: var(--gold); font-family: 'Playfair Display', serif; font-size: .82rem; }
+  .lb-wc { color: var(--text-dim); font-size: .58rem; }
+  .lb-words { display: none; width: 100%; flex-wrap: wrap; gap: 4px; padding: 8px 0 2px 26px; }
+  .lb-words.open { display: flex; }
   .lb-hint { font-size: .5rem; color: var(--text-dim); text-align: center; margin-top: 5px; letter-spacing: .08em; }
+  .lb-word-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: .62rem; color: var(--gold); }
+  @keyframes pulseGlow {
+    0%,100% { text-shadow: 0 0 4px rgba(224,82,82,.4); }
+    50%      { text-shadow: 0 0 14px rgba(224,82,82,.9), 0 0 28px rgba(224,82,82,.5); }
+  }
+  .winner { color: var(--red) !important; animation: pulseGlow 1.8s ease-in-out infinite; }
+  .word-unique { color: var(--red) !important; border-color: rgba(224,82,82,.4) !important; animation: pulseGlow 1.8s ease-in-out infinite; }
 
   /* ── Countdown ── */
   #countdownOverlay {
@@ -256,44 +269,49 @@
   #countdownNum { font-family: 'Playfair Display', serif; font-size: 6rem; font-weight: 900; color: var(--gold); line-height: 1; }
   @keyframes cdPop { 0%{transform:scale(1.6);opacity:0} 40%{transform:scale(.9);opacity:1} 100%{transform:scale(1);opacity:1} }
 
-  /* ── Bouton parties partagées ── */
-  #sharedTabBtn {
-    position: fixed; bottom: 12px; right: 12px;
-    background: var(--surface); border: 1px solid var(--gold);
-    border-radius: 10px; padding: 8px 14px;
-    color: var(--gold); font-family: 'DM Mono', monospace;
-    font-size: .6rem; letter-spacing: .12em; text-transform: uppercase;
-    cursor: pointer; display: none; z-index: 100;
-    box-shadow: 0 2px 12px rgba(0,0,0,.4);
-  }
-  #sharedTabBtn .tab-badge { display: inline-block; background: var(--gold); color: #0d0d0f; border-radius: 999px; font-size: .5rem; padding: 1px 5px; margin-left: 5px; font-weight: 700; vertical-align: middle; }
-
-  /* ── Panel parties partagées ── */
-  #sharedPanel {
-    position: fixed; inset: 0; background: var(--bg);
-    display: none; flex-direction: column;
-    z-index: 400; padding: 28px 20px; overflow-y: auto;
-  }
-  #sharedPanel h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--gold); margin-bottom: 2px; margin-top: 20px; }
-  .shared-sub { font-size: .55rem; letter-spacing: .2em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 18px; }
-  .btn-close-panel { position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: var(--text-dim); font-size: 1.4rem; cursor: pointer; line-height: 1; }
-  .btn-close-panel:hover { color: var(--gold); }
-
-  .shared-game-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
-  .sgc-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-  .sgc-code { font-family: 'Playfair Display', serif; font-size: 1.05rem; color: var(--gold-light); letter-spacing: .1em; }
-  .sgc-date { font-size: .52rem; color: var(--text-dim); }
-  .sgc-meta { font-size: .55rem; color: var(--text-dim); margin-bottom: 6px; }
-  .sgc-played-badge { font-size: .52rem; color: var(--green); margin-bottom: 6px; }
-  .sgc-players { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
-  .sgc-player { display: flex; justify-content: space-between; font-size: .64rem; padding: 3px 0; border-bottom: 1px solid var(--border); }
-  .sgc-player:last-child { border-bottom: none; }
-  .sgc-player-name { color: var(--cream); }
-  .sgc-player-score { color: var(--gold); font-family: 'Playfair Display', serif; }
-  .btn-play-shared { padding: 7px 18px; border: 1px solid var(--gold); border-radius: 7px; background: transparent; color: var(--gold); font-family: 'DM Mono', monospace; font-size: .58rem; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; transition: all .15s; }
-  .btn-play-shared:hover { background: rgba(200,169,110,.1); }
+  /* ── Lobby cards ── */
+  .game-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .game-card.gc-expired { opacity: .52; }
+  .gc-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .gc-code { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--gold-light); letter-spacing: .1em; }
+  .gc-expires { font-size: .5rem; color: var(--text-dim); letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+  .gc-players { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+  .gc-player-row { display: flex; justify-content: space-between; align-items: center; font-size: .64rem; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .gc-player-row:last-child { border-bottom: none; }
+  .gc-player-name { color: var(--cream); }
+  .gc-player-score { color: var(--gold); font-family: 'Playfair Display', serif; font-size: .78rem; }
+  .gc-no-players { font-size: .58rem; color: var(--text-dim); font-style: italic; padding: 4px 0; }
+  .gc-expired-label { font-size: .55rem; color: var(--text-dim); letter-spacing: .15em; text-transform: uppercase; text-align: center; padding: 4px 0; }
+  .btn-join-card { width: 100%; padding: 8px; border: 1px solid var(--gold); border-radius: 7px; background: transparent; color: var(--gold); font-family: 'DM Mono', monospace; font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; transition: all .15s; }
+  .btn-join-card:hover { background: rgba(200,169,110,.1); }
 
   /* ── Notification ── */
+  /* ── Lobby expired ── */
+  .gc-expired { opacity: .55; }
+  .gc-expired-label { font-size: .55rem; color: var(--text-dim); letter-spacing: .15em; text-transform: uppercase; text-align: center; padding: 4px 0; }
+
+  /* ── Pulsing glow (winner + mots uniques) ── */
+  @keyframes pulseGlow {
+    0%,100% { text-shadow: 0 0 4px rgba(224,82,82,.4); }
+    50%      { text-shadow: 0 0 14px rgba(224,82,82,.9), 0 0 24px rgba(224,82,82,.5); }
+  }
+  .winner { color: var(--red) !important; animation: pulseGlow 1.8s ease-in-out infinite; }
+  .word-unique { color: var(--red) !important; animation: pulseGlow 1.8s ease-in-out infinite; }
+
+  /* ── Leaderboard étendu ── */
+  .lb-row { display: flex; align-items: center; padding: 7px 10px; border-radius: 6px; margin-bottom: 3px; background: var(--surface); border: 1px solid var(--border); font-size: .66rem; cursor: pointer; transition: background .15s; flex-wrap: wrap; }
+  .lb-row.me { border-color: var(--gold); background: rgba(200,169,110,.07); }
+  .lb-row:hover { background: var(--surface2); }
+  .lb-rank  { color: var(--text-dim); width: 18px; flex-shrink: 0; }
+  .lb-name  { flex: 1; margin: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lb-stats { display: flex; gap: 12px; flex-shrink: 0; align-items: center; }
+  .lb-score { color: var(--gold); font-family: 'Playfair Display', serif; font-size: .82rem; }
+  .lb-wc    { color: var(--text-dim); font-size: .58rem; }
+  .lb-words { display: none; width: 100%; flex-wrap: wrap; gap: 4px; padding: 8px 0 2px 26px; }
+  .lb-words.open { display: flex; }
+  .lb-hint  { font-size: .5rem; color: var(--text-dim); text-align: center; margin-top: 5px; letter-spacing: .08em; }
+  .lb-word-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: .62rem; }
+
   .notif { position: fixed; top: 40%; left: 50%; transform: translate(-50%,-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 20px; font-size: .75rem; color: var(--text-dim); letter-spacing: .1em; z-index: 600; animation: notifAnim 1.4s ease-out forwards; pointer-events: none; }
   @keyframes notifAnim { 0%{opacity:0;transform:translate(-50%,-50%) scale(.9)} 20%{opacity:1;transform:translate(-50%,-50%) scale(1)} 80%{opacity:1} 100%{opacity:0;transform:translate(-50%,-58%) scale(.95)} }
 </style>
@@ -312,40 +330,41 @@
   </div>
 </div>
 
-<!-- ════ MULTI SCREEN ════ -->
-<div id="multiScreen" class="flow-screen">
+<!-- ════ MULTI SCREEN — LOBBY ════ -->
+<div id="multiScreen" class="flow-screen" style="padding:16px;overflow-y:auto;justify-content:flex-start;padding-top:56px;">
   <button class="btn-back" id="btnBackToHome">← Retour</button>
-  <h2>Multijoueur</h2>
-  <p class="flow-sub">Choisissez une option</p>
-  <div class="mode-btns">
-    <button class="btn-mode" id="btnCreate">Créer une nouvelle partie</button>
-    <button class="btn-mode outline" id="btnJoin">Rejoindre une partie</button>
+  <div style="display:flex;justify-content:space-between;align-items:center;width:100%;max-width:480px;margin-bottom:10px;">
+    <h2 style="margin-bottom:0;">Multijoueur</h2>
+    <button style="padding:8px 16px;border:1.5px solid var(--gold);border-radius:8px;background:var(--gold);color:#0d0d0f;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;font-weight:500;" id="btnCreate">+ Nouvelle partie</button>
   </div>
-</div>
-
-<!-- ════ JOIN SCREEN ════ -->
-<div id="joinScreen" class="flow-screen">
-  <button class="btn-back" id="btnBackToMulti">← Retour</button>
-  <h2>Rejoindre</h2>
-  <p class="flow-sub">Entrez le code de la partie</p>
-  <span class="input-label">Code de partie</span>
-  <input class="game-input" id="joinCodeInput" maxlength="7" placeholder="TIGRE42">
-  <span class="input-label" style="margin-top:8px;">Votre pseudo</span>
-  <input class="game-input" id="joinPseudoInput" maxlength="20" placeholder="Votre prénom">
-  <div class="input-error" id="joinError"></div>
-  <button class="btn-mode" id="btnDoJoin" style="margin-top:4px;">Rejoindre</button>
+  <p style="font-size:.55rem;letter-spacing:.18em;color:var(--text-dim);text-transform:uppercase;width:100%;max-width:480px;margin-bottom:12px;">Parties actives — expirent après 72h</p>
+  <div id="lobbyList" style="width:100%;max-width:480px;display:flex;flex-direction:column;gap:8px;"><div style="font-size:.62rem;color:var(--text-dim);text-align:center;padding:24px 0;letter-spacing:.15em;text-transform:uppercase;">Chargement…</div></div>
 </div>
 
 <!-- ════ CODE SCREEN ════ -->
 <div id="codeScreen" class="flow-screen">
   <button class="btn-back" id="btnBackToMulti2">← Retour</button>
   <h2>Partie créée !</h2>
-  <p class="code-hint">Partagez ce code avec vos adversaires.<br>Ils ont <strong style="color:var(--gold)">72 heures</strong> pour jouer.</p>
+  <p class="code-hint">Votre partie est visible dans le lobby.<br>Elle expire dans <strong style="color:var(--gold)">72 heures</strong>.</p>
   <div class="game-code-display" id="codeDisplay">——</div>
   <span class="input-label" style="margin-top:4px;">Votre pseudo</span>
   <input class="game-input" id="creatorPseudoInput" maxlength="20" placeholder="Votre prénom">
   <div class="input-error" id="codeError"></div>
   <button class="btn-mode" id="btnStartCreator" style="margin-top:4px;">Jouer maintenant</button>
+</div>
+
+<!-- ════ MODAL PSEUDO ════ -->
+<div id="pseudoModal" style="position:fixed;inset:0;background:rgba(13,13,15,.88);display:none;align-items:center;justify-content:center;z-index:500;backdrop-filter:blur(6px);">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 24px;width:min(88vw,320px);display:flex;flex-direction:column;gap:12px;align-items:center;">
+    <h3 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--gold);letter-spacing:.08em;">Rejoindre</h3>
+    <p class="flow-sub" id="pseudoModalSub" style="margin-bottom:0;">Partie ——</p>
+    <input class="game-input" id="pseudoInput" maxlength="20" placeholder="Votre prénom">
+    <div id="pseudoError" style="font-size:.6rem;color:var(--red);letter-spacing:.1em;min-height:14px;text-align:center;"></div>
+    <div style="display:flex;gap:8px;width:100%;">
+      <button id="btnPseudoCancel" style="flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text-dim);font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;">Annuler</button>
+      <button id="btnPseudoConfirm" style="flex:2;padding:10px;border:1.5px solid var(--gold);border-radius:8px;background:var(--gold);color:#0d0d0f;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;font-weight:500;">Jouer</button>
+    </div>
+  </div>
 </div>
 
 <!-- ════ JEU ════ -->
@@ -388,18 +407,7 @@
   <div id="countdownNum">3</div>
 </div>
 
-<!-- ════ BOUTON PARTIES PARTAGÉES ════ -->
-<button id="sharedTabBtn">
-  Parties partagées<span class="tab-badge" id="sharedBadge">0</span>
-</button>
 
-<!-- ════ PANEL PARTIES PARTAGÉES ════ -->
-<div id="sharedPanel">
-  <button class="btn-close-panel" id="btnClosePanel">✕</button>
-  <h2>Parties partagées</h2>
-  <p class="shared-sub">Vos parties multijoueur — expirent après 72h</p>
-  <div id="sharedGamesList"></div>
-</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -426,6 +434,7 @@ try {
 const GAME_DURATION  = 180;
 const N              = 4;
 const MULTI_TTL_MS   = 72 * 60 * 60 * 1000;
+const WEEK_MS        = 7 * 24 * 60 * 60 * 1000;
 
 const FRENCH_DICE = [
   'LENUYG','ELUPST','ZDVNEA','SDTNOE','AMORIS','FXRAOI','MOQABJ',
@@ -434,22 +443,17 @@ const FRENCH_DICE = [
 ];
 
 const CODE_WORDS = [
-  'AIGLE','ARBRE','BISON','BULLE','CACHE','CALME','CARPE','CHANT',
-  'CIBLE','COBRA','COEUR','CORAL','CRANE','DAGUE','DELTA','DINGO',
-  'DUVET','ECLAT','EPICE','ETANG','FABLE','FAUNE','FLAIR','FLEUR',
-  'FONTE','FORGE','FORME','FOYER','FRENE','FRUIT','GALET','GARDE',
-  'GIVRE','GLOBE','GLACE','GRACE','GRAIN','GRIVE','HAVRE','HERBE',
-  'HERON','LANCE','LAPIN','LARME','LIEGE','LIMON','LINGE','LOUPE',
-  'LUEUR','LUTIN','MAGMA','MANTE','MARIN','MERLE','MEULE','MILAN',
-  'MITRE','MONDE','MORSE','MULET','MYTHE','NACRE','NICHE','NOBLE',
-  'NOYER','NUAGE','OCTET','OLIVE','OPALE','ORAGE','ORVET','OUTRE',
-  'OZONE','PALME','PANDA','PENTE','PERLE','PINCE','PISTE','PIVOT',
-  'PLUME','POMME','PRUNE','RADAR','RATON','RAVIN','RENNE','REPOS',
-  'RONCE','ROUGE','ROUTE','RUCHE','RUINE','SABLE','SAUGE','SIGNE',
-  'SOLDE','SONAR','STYLE','TAUPE','TERME','TERRE','TIGRE','TITRE',
-  'TOILE','TOTEM','TRONC','TULIPE','TURBO','ULTRA','UNION','VALVE',
-  'VEINE','VERGE','VIGNE','VITRE','VOILE','ZELEE','ZEBRE','ZINEB'
-];
+  'AIGLE','ALOES','ARBRE','BISON','BUTOR','CALAO','CARPE','CEBUS',
+  'CERF','CERFE','CIVIT','COBRA','COLZA','COYPU','CYGNE','DAIM',
+  'DINGO','EMYDE','EPINE','ERICA','FAUVE','FELIN','FRENE','GENET',
+  'GIBOU','GRIVE','HELIX','HERON','HIBOU','HYDRE','HYENE','LAPIN',
+  'LARCH','LILAS','LIMON','LUPIN','LYNGE','MACIS','MAUVE','MERLE',
+  'MILAN','MORUE','MULET','NAVET','NOYER','OBIER','OKAPI','OLIVE',
+  'ORVET','OTARI','OTIDE','PALME','PANDA','PIPIT','PLUME','POULE',
+  'PRUNE','PUTOI','RATON','RENNE','RIBES','RONCE','SAPIN','SAUGE',
+  'SEDGE','SERIN','TAPIR','TAUPE','THUJA','TIGRE','TRELE','VARAN',
+  'VIPRE','WAPOU','YUCCA','ZEBRE','ZORBA'
+].filter(w => w.length === 5);
 
 // ══════════════════════════════════════════════════════════
 // DICTIONNAIRE
@@ -495,7 +499,22 @@ async function loadDictionary() {
   document.getElementById('loadingMsg').textContent = 'Prêt !';
   document.querySelector('.bar-wrap').style.display = 'none';
   document.getElementById('modeBtns').style.display = 'flex';
-  loadLocalGames();
+  purgeOldGames();
+}
+
+async function purgeOldGames() {
+  if (!db) return;
+  try {
+    const cutoff = Date.now() - WEEK_MS;
+    const snap = await db.collection('games').orderBy('createdAt','asc').limit(100).get();
+    const batch = db.batch(); let count = 0;
+    snap.forEach(doc => {
+      const d = doc.data();
+      const ts = d.createdAt ? d.createdAt.toMillis() : (d.createdAtMs || 0);
+      if (ts && ts < cutoff) { batch.delete(doc.ref); count++; }
+    });
+    if (count > 0) { await batch.commit(); console.log(`Purge: ${count} supprimée(s)`); }
+  } catch(e) { console.warn('Purge:', e.message); }
 }
 
 function setMsg(t) { document.getElementById('loadingMsg').textContent = t; }
@@ -513,7 +532,7 @@ let board=[], selectedPath=[], foundWords=new Set();
 let score=0, timeLeft=GAME_DURATION, gameActive=false;
 let timerInterval=null, isDragging=false, gestureStart=null;
 let currentMode='solo', currentGameCode='', currentPseudo='';
-let firestoreUnsub=null, localGames=[];
+let firestoreUnsub=null;
 
 // ══════════════════════════════════════════════════════════
 // GÉNÉRATION PLATEAU
@@ -534,10 +553,21 @@ function randomBoard() {
   return dice.map(d=>d[Math.random()*d.length|0]);
 }
 
-function generateCode() {
-  const w=CODE_WORDS[Math.floor(Math.random()*CODE_WORDS.length)].slice(0,5);
-  const n=10+Math.floor(Math.random()*90);
-  return w+n;
+async function generateCode() {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const w = CODE_WORDS[Math.floor(Math.random() * CODE_WORDS.length)];
+    const n = 10 + Math.floor(Math.random() * 90);
+    const code = w + n;
+    try {
+      const snap = await db.collection('games').doc(code).get();
+      if (!snap.exists) return code;
+      const d = snap.data();
+      const ts = d.createdAt ? d.createdAt.toMillis() : (d.createdAtMs || 0);
+      if (Date.now() - ts > WEEK_MS) return code; // recyclable
+    } catch(e) { return code; }
+  }
+  const w = CODE_WORDS[Math.floor(Math.random() * CODE_WORDS.length)];
+  return w + (10 + Math.floor(Math.random() * 90));
 }
 
 // ══════════════════════════════════════════════════════════
@@ -546,25 +576,122 @@ function generateCode() {
 function hide(...ids) { ids.forEach(id=>document.getElementById(id).style.display='none'); }
 function show(id, disp='flex') { document.getElementById(id).style.display=disp; }
 
+let _lobbyTimerInterval = null;
+
+function fmtCountdown(ms) {
+  if (ms <= 0) return 'Expirée';
+  const s = Math.floor(ms / 1000);
+  const hh = Math.floor(s / 3600).toString().padStart(2,'0');
+  const mm = Math.floor((s % 3600) / 60).toString().padStart(2,'0');
+  const ss = (s % 60).toString().padStart(2,'0');
+  return `${hh}:${mm}:${ss}`;
+}
+
 function showHome() {
-  hide('multiScreen','joinScreen','codeScreen','gameUI');
+  if (_lobbyTimerInterval) { clearInterval(_lobbyTimerInterval); _lobbyTimerInterval = null; }
+  hide('multiScreen','codeScreen','gameUI');
   show('loadingScreen');
   document.getElementById('modeBtns').style.display='flex';
   document.getElementById('loadingMsg').style.display='none';
   document.querySelector('.bar-wrap').style.display='none';
 }
 function showMulti() {
-  hide('loadingScreen','joinScreen','codeScreen','gameUI');
+  if (_lobbyTimerInterval) { clearInterval(_lobbyTimerInterval); _lobbyTimerInterval = null; }
+  hide('loadingScreen','codeScreen','gameUI');
   show('multiScreen');
-}
-function showJoin() {
-  hide('multiScreen');
-  show('joinScreen');
-  document.getElementById('joinError').textContent='';
+  loadLobby();
 }
 function showCode() {
+  if (_lobbyTimerInterval) { clearInterval(_lobbyTimerInterval); _lobbyTimerInterval = null; }
   hide('multiScreen');
   show('codeScreen');
+}
+
+async function loadLobby() {
+  const list = document.getElementById('lobbyList');
+  list.innerHTML = '<div style="font-size:.62rem;color:var(--text-dim);text-align:center;padding:24px 0;letter-spacing:.15em;text-transform:uppercase;">Chargement…</div>';
+  if (!db) { list.innerHTML = '<div style="font-size:.68rem;color:var(--text-dim);text-align:center;padding:32px 0;">Firebase non disponible.</div>'; return; }
+  try {
+    const now = Date.now();
+    const snap = await db.collection('games').orderBy('createdAt','desc').limit(60).get();
+    const games = [];
+    snap.forEach(doc => {
+      const d = doc.data();
+      const ts = d.createdAt ? d.createdAt.toMillis() : (d.createdAtMs || 0);
+      if (ts && (now - ts) < WEEK_MS) games.push({ code: doc.id, ...d });
+    });
+    if (!games.length) {
+      list.innerHTML = '<div style="font-size:.68rem;color:var(--text-dim);text-align:center;padding:32px 0;letter-spacing:.1em;">Aucune partie.<br>Créez-en une !</div>';
+      return;
+    }
+    list.innerHTML = '';
+    games.forEach(g => {
+      const expired = now > g.expiresAt;
+      const players = g.players || {};
+      const sorted = Object.entries(players)
+        .filter(([,v]) => v.score !== undefined)
+        .sort((a,b) => b[1].score - a[1].score);
+      const playersHtml = sorted.length
+        ? sorted.map(([name,val], idx) => `
+            <div class="gc-player-row">
+              <span class="gc-player-name">${idx+1}. ${name}</span>
+              <span class="gc-player-score">${val.score} pts · ${val.words||0} mot${val.words!==1?'s':''}</span>
+            </div>`).join('')
+        : '<div class="gc-no-players">Aucun joueur encore</div>';
+      const card = document.createElement('div');
+      card.className = 'game-card' + (expired ? ' gc-expired' : '');
+      card.innerHTML = `
+        <div class="gc-top">
+          <span class="gc-code">${g.code}</span>
+          <span class="gc-expires" data-expires="${g.expiresAt}">${fmtCountdown(g.expiresAt - now)}</span>
+        </div>
+        <div class="gc-players">${playersHtml}</div>
+        ${expired
+          ? '<div class="gc-expired-label">Partie expirée</div>'
+          : '<button class="btn-join-card">Rejoindre</button>'}
+      `;
+      if (!expired) {
+        card.querySelector('.btn-join-card').addEventListener('click', () => openPseudoModal(g.code, players));
+      }
+      list.appendChild(card);
+    });
+    if (_lobbyTimerInterval) clearInterval(_lobbyTimerInterval);
+    _lobbyTimerInterval = setInterval(() => {
+      document.querySelectorAll('.gc-expires[data-expires]').forEach(el => {
+        el.textContent = fmtCountdown(+el.dataset.expires - Date.now());
+      });
+    }, 1000);
+  } catch(e) {
+    list.innerHTML = `<div style="font-size:.68rem;color:var(--text-dim);text-align:center;padding:32px 0;">Erreur de chargement.<br><small>${e.message}</small></div>`;
+  }
+}
+
+let _joinCode = '', _joinPlayers = {};
+function openPseudoModal(code, players) {
+  _joinCode = code; _joinPlayers = players;
+  document.getElementById('pseudoModalSub').textContent = 'Partie ' + code;
+  document.getElementById('pseudoInput').value = '';
+  document.getElementById('pseudoError').textContent = '';
+  document.getElementById('pseudoModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('pseudoInput').focus(), 50);
+}
+async function confirmJoin() {
+  const pseudo = document.getElementById('pseudoInput').value.trim();
+  if (!pseudo) { document.getElementById('pseudoError').textContent = 'Entrez un pseudo.'; return; }
+  if (_joinPlayers[pseudo]?.score !== undefined) {
+    document.getElementById('pseudoError').textContent = 'Ce pseudo a déjà joué cette partie.'; return;
+  }
+  let snap;
+  try { snap = await db.collection('games').doc(_joinCode).get(); }
+  catch(e) { document.getElementById('pseudoError').textContent = 'Erreur réseau.'; return; }
+  if (!snap.exists) { document.getElementById('pseudoError').textContent = 'Partie introuvable.'; return; }
+  const data = snap.data();
+  if (Date.now() > data.expiresAt) { document.getElementById('pseudoError').textContent = 'Partie expirée.'; return; }
+  document.getElementById('pseudoModal').style.display = 'none';
+  goFullscreen();
+  currentGameCode = _joinCode; currentPseudo = pseudo; currentMode = 'multi';
+  board = data.board;
+  launchGame();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -594,20 +721,21 @@ function startSolo() {
 async function createGame() {
   if (!db) { showNotif('Firebase non disponible.'); return; }
   goFullscreen();
-  const code=generateCode();
-  const boardLetters=boardFromSeed(code);
+  const code = await generateCode();
+  const boardLetters = boardFromSeed(code);
   try {
     await db.collection('games').doc(code).set({
       board: boardLetters,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      expiresAt: Date.now()+MULTI_TTL_MS,
+      createdAtMs: Date.now(),
+      expiresAt: Date.now() + MULTI_TTL_MS,
       players: {}
     });
-  } catch(e) { showNotif('Erreur Firebase : '+e.message); return; }
-  currentGameCode=code;
-  document.getElementById('codeDisplay').textContent=code;
-  document.getElementById('codeError').textContent='';
-  document.getElementById('creatorPseudoInput').value='';
+  } catch(e) { showNotif('Erreur Firebase : ' + e.message); return; }
+  currentGameCode = code;
+  document.getElementById('codeDisplay').textContent = code;
+  document.getElementById('codeError').textContent = '';
+  document.getElementById('creatorPseudoInput').value = '';
   showCode();
 }
 
@@ -618,32 +746,6 @@ async function startAsCreator() {
   const snap=await db.collection('games').doc(currentGameCode).get();
   board=snap.data().board;
   saveLocalGame(currentGameCode,pseudo);
-  launchGame();
-}
-
-// ══════════════════════════════════════════════════════════
-// MULTI — REJOINDRE
-// ══════════════════════════════════════════════════════════
-async function doJoin() {
-  if (!db) { document.getElementById('joinError').textContent='Firebase non disponible.'; return; }
-  const code=document.getElementById('joinCodeInput').value.trim().toUpperCase();
-  const pseudo=document.getElementById('joinPseudoInput').value.trim();
-  document.getElementById('joinError').textContent='';
-  if (!code)   { document.getElementById('joinError').textContent='Entrez un code.'; return; }
-  if (!pseudo) { document.getElementById('joinError').textContent='Entrez votre pseudo.'; return; }
-  let snap;
-  try { snap=await db.collection('games').doc(code).get(); }
-  catch(e) { document.getElementById('joinError').textContent='Erreur réseau.'; return; }
-  if (!snap.exists) { document.getElementById('joinError').textContent='Code introuvable.'; return; }
-  const data=snap.data();
-  if (Date.now()>data.expiresAt) { document.getElementById('joinError').textContent='Cette partie a expiré (72h).'; return; }
-  if (data.players?.[pseudo]?.score!==undefined) {
-    document.getElementById('joinError').textContent='Ce pseudo a déjà joué cette partie.'; return;
-  }
-  goFullscreen();
-  currentGameCode=code; currentPseudo=pseudo; currentMode='multi';
-  board=data.board;
-  saveLocalGame(code,pseudo);
   launchGame();
 }
 
@@ -830,9 +932,39 @@ function showSoloOver(words) {
   ov.querySelector('#btnReplaySolo').addEventListener('click', ()=>{ ov.remove(); startSolo(); });
 }
 
+// ─── Détermine le gagnant parmi les joueurs ───
+function determineWinner(players) {
+  const entries = Object.entries(players).filter(([,v]) => v.score !== undefined);
+  if (!entries.length) return null;
+  entries.sort(([,a],[,b]) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if ((b.words||0) !== (a.words||0)) return (b.words||0) - (a.words||0);
+    // meilleur mot unique
+    const bestA = Math.max(0,...(a.wordList||[]).map(w=>calcScore(w)));
+    const bestB = Math.max(0,...(b.wordList||[]).map(w=>calcScore(w)));
+    if (bestB !== bestA) return bestB - bestA;
+    // nb de mots avec ce score max
+    const cntA = (a.wordList||[]).filter(w=>calcScore(w)===bestA).length;
+    const cntB = (b.wordList||[]).filter(w=>calcScore(w)===bestB).length;
+    if (cntB !== cntA) return cntB - cntA;
+    // premier à avoir joué
+    return (a.playedAt||0) - (b.playedAt||0);
+  });
+  return entries[0][0]; // nom du gagnant
+}
+
+// ─── Calcule les mots uniques (trouvés par un seul joueur) ───
+function computeUniqueWords(players) {
+  const wordCount = {};
+  Object.values(players).forEach(v => {
+    (v.wordList||[]).forEach(w => { wordCount[w] = (wordCount[w]||0) + 1; });
+  });
+  return new Set(Object.entries(wordCount).filter(([,n])=>n===1).map(([w])=>w));
+}
+
 async function showMultiOver(words) {
   const snap=await db.collection('games').doc(currentGameCode).get();
-  const players=snap.exists?snap.data().players||{}:{};
+  const players=snap.exists?snap.data().players||{};
   const ov=document.createElement('div'); ov.className='overlay';
   ov.innerHTML=`
     <h2>Fin de partie</h2>
@@ -875,99 +1007,9 @@ function renderLbRows(players) {
 async function saveScore(code, pseudo, sc, words) {
   try {
     await db.collection('games').doc(code).update({
-      [`players.${pseudo}`]: { score:sc, words:words.length, playedAt:Date.now() }
+      [`players.${pseudo}`]: { score:sc, words:words.length, wordList:words, playedAt:Date.now() }
     });
   } catch(e) { showNotif('Erreur enregistrement : '+e.message); }
-}
-
-// ══════════════════════════════════════════════════════════
-// LOCALSTORAGE
-// ══════════════════════════════════════════════════════════
-function getLocalGames() {
-  try { return JSON.parse(localStorage.getItem('boggle_games')||'[]').filter(g=>Date.now()-g.createdAt<MULTI_TTL_MS+3600000); }
-  catch { return []; }
-}
-function saveLocalGame(code, pseudo) {
-  const games=getLocalGames();
-  if (!games.find(g=>g.code===code&&g.pseudo===pseudo)) {
-    games.push({code, pseudo, played:false, createdAt:Date.now()});
-    localStorage.setItem('boggle_games',JSON.stringify(games));
-  }
-  localGames=games; refreshSharedBtn();
-}
-function markLocalGamePlayed(code, pseudo) {
-  const games=getLocalGames().map(g=>(g.code===code&&g.pseudo===pseudo)?{...g,played:true}:g);
-  localStorage.setItem('boggle_games',JSON.stringify(games));
-  localGames=games;
-}
-function loadLocalGames() { localGames=getLocalGames(); refreshSharedBtn(); }
-function refreshSharedBtn() {
-  const btn=document.getElementById('sharedTabBtn');
-  const badge=document.getElementById('sharedBadge');
-  btn.style.display=localGames.length?'block':'none';
-  badge.textContent=localGames.length;
-}
-
-// ══════════════════════════════════════════════════════════
-// PANEL PARTIES PARTAGÉES
-// ══════════════════════════════════════════════════════════
-async function showSharedPanel() {
-  document.getElementById('sharedPanel').style.display='flex';
-  const list=document.getElementById('sharedGamesList');
-  list.innerHTML='<div style="color:var(--text-dim);font-size:.65rem;letter-spacing:.1em;">Chargement…</div>';
-  const games=getLocalGames();
-  if (!games.length) { list.innerHTML='<div style="color:var(--text-dim);font-size:.65rem;">Aucune partie partagée.</div>'; return; }
-  list.innerHTML='';
-  for (const g of [...games].reverse()) {
-    const hLeft=Math.max(0,Math.floor((g.createdAt+MULTI_TTL_MS-Date.now())/3600000));
-    const card=document.createElement('div'); card.className='shared-game-card';
-    card.innerHTML=`
-      <div class="sgc-header">
-        <span class="sgc-code">${g.code}</span>
-        <span class="sgc-date">${new Date(g.createdAt).toLocaleDateString('fr-FR')}</span>
-      </div>
-      <div class="sgc-meta">${hLeft>0?`Expire dans ${hLeft}h`:'Expirée'} · Pseudo : ${g.pseudo}</div>
-      ${g.played?'<div class="sgc-played-badge">✓ Vous avez joué</div>':''}
-      <div class="sgc-players" id="sp_${g.code}_${g.pseudo}"><span style="color:var(--text-dim);font-size:.6rem;">Chargement…</span></div>
-      ${!g.played&&hLeft>0?`<button class="btn-play-shared" data-code="${g.code}" data-pseudo="${g.pseudo}">Jouer maintenant</button>`:''}
-    `;
-    list.appendChild(card);
-
-    // Charger scores
-    try {
-      const snap=await db.collection('games').doc(g.code).get();
-      const container=document.getElementById(`sp_${g.code}_${g.pseudo}`); if(!container)continue;
-      if (!snap.exists) { container.innerHTML='<span style="color:var(--red);font-size:.6rem;">Partie introuvable</span>'; continue; }
-      const pl=snap.data().players||{};
-      const sorted=Object.entries(pl).filter(([,v])=>v.score!==undefined).sort((a,b)=>b[1].score-a[1].score);
-      if (!sorted.length) { container.innerHTML='<span style="color:var(--text-dim);font-size:.6rem;">Aucun score encore</span>'; continue; }
-      if (g.played) {
-        container.innerHTML=sorted.map(([name,val],idx)=>`
-          <div class="sgc-player">
-            <span class="sgc-player-name">${idx+1}. ${name}</span>
-            <span class="sgc-player-score">${val.score} pts</span>
-          </div>`).join('');
-      } else {
-        container.innerHTML=`<span style="color:var(--text-dim);font-size:.6rem;">${sorted.length} joueur${sorted.length>1?'s ont':'a'} joué — scores visibles après votre tour</span>`;
-      }
-    } catch(e) {
-      const c=document.getElementById(`sp_${g.code}_${g.pseudo}`);
-      if(c) c.innerHTML='<span style="color:var(--text-dim);font-size:.6rem;">Erreur de chargement</span>';
-    }
-  }
-
-  // Délégation d'événements pour "Jouer maintenant"
-  list.querySelectorAll('.btn-play-shared').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const code=btn.dataset.code, pseudo=btn.dataset.pseudo;
-      document.getElementById('sharedPanel').style.display='none';
-      goFullscreen(); currentMode='multi'; currentPseudo=pseudo; currentGameCode=code;
-      const snap=await db.collection('games').doc(code).get();
-      if (!snap.exists) { showNotif('Partie introuvable.'); return; }
-      board=snap.data().board;
-      launchGame();
-    });
-  });
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1021,17 +1063,12 @@ document.getElementById('btnSolo').addEventListener('click', startSolo);
 document.getElementById('btnMulti').addEventListener('click', showMulti);
 document.getElementById('btnBackToHome').addEventListener('click', showHome);
 document.getElementById('btnCreate').addEventListener('click', createGame);
-document.getElementById('btnJoin').addEventListener('click', showJoin);
-document.getElementById('btnBackToMulti').addEventListener('click', showMulti);
 document.getElementById('btnBackToMulti2').addEventListener('click', showMulti);
-document.getElementById('btnDoJoin').addEventListener('click', doJoin);
 document.getElementById('btnStartCreator').addEventListener('click', startAsCreator);
 document.getElementById('btnMenu').addEventListener('click', goHome);
-document.getElementById('sharedTabBtn').addEventListener('click', showSharedPanel);
-document.getElementById('btnClosePanel').addEventListener('click', ()=>{ document.getElementById('sharedPanel').style.display='none'; });
-
-// Normaliser l'input code
-document.getElementById('joinCodeInput').addEventListener('input', function(){ this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
+document.getElementById('btnPseudoCancel').addEventListener('click', ()=>{ document.getElementById('pseudoModal').style.display='none'; });
+document.getElementById('btnPseudoConfirm').addEventListener('click', confirmJoin);
+document.getElementById('pseudoInput').addEventListener('keydown', e=>{ if(e.key==='Enter') confirmJoin(); });
 
 // ══════════════════════════════════════════════════════════
 // BOOT — purge les anciens Service Workers puis charge
