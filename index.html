@@ -458,19 +458,22 @@ async function loadDictionary() {
   setMsg('Chargement du dictionnaire…'); setBar(5);
   let text;
   try {
-    const resp = await fetch('ODS6.txt');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    const resp = await fetch('ODS6.txt', { signal: controller.signal });
+    clearTimeout(timeout);
     if (!resp.ok) throw new Error(`HTTP ${resp.status} — ODS6.txt introuvable.`);
-    const reader = resp.body.getReader();
-    const chunks = []; let received = 0; const EST = 4*1024*1024;
-    while (true) {
-      const {done, value} = await reader.read(); if (done) break;
-      chunks.push(value); received += value.length;
-      setBar(5 + Math.min(55, (received/EST*55)|0));
+    setBar(30);
+    text = await resp.text();
+    setBar(60);
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      showError('Délai dépassé — ODS6.txt trop long à charger.\nVérifiez que le fichier est bien dans le dépôt GitHub.');
+    } else {
+      showError(e.message);
     }
-    const m = new Uint8Array(received); let off=0;
-    for (const c of chunks) { m.set(c,off); off+=c.length; }
-    text = new TextDecoder('utf-8').decode(m);
-  } catch(e) { showError(e.message); return; }
+    return;
+  }
 
   setMsg('Chargement des mots…'); setBar(62);
   const lines = text.replace(/\r/g,'').split('\n');
