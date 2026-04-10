@@ -1036,9 +1036,14 @@ document.getElementById('btnClosePanel').addEventListener('click', ()=>{ documen
 document.getElementById('joinCodeInput').addEventListener('input', function(){ this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
 
 // ══════════════════════════════════════════════════════════
-// BOOT
+// BOOT — purge les anciens Service Workers puis charge
 // ══════════════════════════════════════════════════════════
 attachGridEvents();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  });
+}
 loadDictionary();
 </script>
 </body>
