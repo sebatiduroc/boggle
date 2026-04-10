@@ -754,7 +754,7 @@ async function startAsCreator() {
 function launchGame() {
   document.getElementById('multiInfo').textContent=`Partie ${currentGameCode} · ${currentPseudo}`;
   document.getElementById('multiInfo').style.display='block';
-  hide('codeScreen','joinScreen','loadingScreen','multiScreen');
+  hide('codeScreen','loadingScreen','multiScreen');
   show('gameUI');
   initGame();
 }
