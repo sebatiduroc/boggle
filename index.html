@@ -290,28 +290,6 @@
   .gc-expired { opacity: .55; }
   .gc-expired-label { font-size: .55rem; color: var(--text-dim); letter-spacing: .15em; text-transform: uppercase; text-align: center; padding: 4px 0; }
 
-  /* ── Pulsing glow (winner + mots uniques) ── */
-  @keyframes pulseGlow {
-    0%,100% { text-shadow: 0 0 4px rgba(224,82,82,.4); }
-    50%      { text-shadow: 0 0 14px rgba(224,82,82,.9), 0 0 24px rgba(224,82,82,.5); }
-  }
-  .winner { color: var(--red) !important; animation: pulseGlow 1.8s ease-in-out infinite; }
-  .word-unique { color: var(--red) !important; animation: pulseGlow 1.8s ease-in-out infinite; }
-
-  /* ── Leaderboard étendu ── */
-  .lb-row { display: flex; align-items: center; padding: 7px 10px; border-radius: 6px; margin-bottom: 3px; background: var(--surface); border: 1px solid var(--border); font-size: .66rem; cursor: pointer; transition: background .15s; flex-wrap: wrap; }
-  .lb-row.me { border-color: var(--gold); background: rgba(200,169,110,.07); }
-  .lb-row:hover { background: var(--surface2); }
-  .lb-rank  { color: var(--text-dim); width: 18px; flex-shrink: 0; }
-  .lb-name  { flex: 1; margin: 0 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .lb-stats { display: flex; gap: 12px; flex-shrink: 0; align-items: center; }
-  .lb-score { color: var(--gold); font-family: 'Playfair Display', serif; font-size: .82rem; }
-  .lb-wc    { color: var(--text-dim); font-size: .58rem; }
-  .lb-words { display: none; width: 100%; flex-wrap: wrap; gap: 4px; padding: 8px 0 2px 26px; }
-  .lb-words.open { display: flex; }
-  .lb-hint  { font-size: .5rem; color: var(--text-dim); text-align: center; margin-top: 5px; letter-spacing: .08em; }
-  .lb-word-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: .62rem; }
-
   .notif { position: fixed; top: 40%; left: 50%; transform: translate(-50%,-50%); background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 20px; font-size: .75rem; color: var(--text-dim); letter-spacing: .1em; z-index: 600; animation: notifAnim 1.4s ease-out forwards; pointer-events: none; }
   @keyframes notifAnim { 0%{opacity:0;transform:translate(-50%,-50%) scale(.9)} 20%{opacity:1;transform:translate(-50%,-50%) scale(1)} 80%{opacity:1} 100%{opacity:0;transform:translate(-50%,-58%) scale(.95)} }
 </style>
@@ -932,27 +910,6 @@ function showSoloOver(words) {
   ov.querySelector('#btnReplaySolo').addEventListener('click', ()=>{ ov.remove(); startSolo(); });
 }
 
-// ─── Détermine le gagnant parmi les joueurs ───
-function determineWinner(players) {
-  const entries = Object.entries(players).filter(([,v]) => v.score !== undefined);
-  if (!entries.length) return null;
-  entries.sort(([,a],[,b]) => {
-    if (b.score !== a.score) return b.score - a.score;
-    if ((b.words||0) !== (a.words||0)) return (b.words||0) - (a.words||0);
-    // meilleur mot unique
-    const bestA = Math.max(0,...(a.wordList||[]).map(w=>calcScore(w)));
-    const bestB = Math.max(0,...(b.wordList||[]).map(w=>calcScore(w)));
-    if (bestB !== bestA) return bestB - bestA;
-    // nb de mots avec ce score max
-    const cntA = (a.wordList||[]).filter(w=>calcScore(w)===bestA).length;
-    const cntB = (b.wordList||[]).filter(w=>calcScore(w)===bestB).length;
-    if (cntB !== cntA) return cntB - cntA;
-    // premier à avoir joué
-    return (a.playedAt||0) - (b.playedAt||0);
-  });
-  return entries[0][0]; // nom du gagnant
-}
-
 // ─── Calcule les mots uniques (trouvés par un seul joueur) ───
 function computeUniqueWords(players) {
   const wordCount = {};
@@ -972,33 +929,80 @@ async function showMultiOver(words) {
     <div class="final-sub">point${score!==1?'s':''} — ${foundWords.size} mot${foundWords.size!==1?'s':''}</div>
     <div class="leaderboard">
       <div class="leaderboard-title">Classement · ${currentGameCode}</div>
-      <div id="lbRows">${renderLbRows(players)}</div>
-      <div class="lb-hint">Les scores se mettent à jour en temps réel</div>
+      <div id="lbRows"></div>
+      <div class="lb-hint">Temps réel · Cliquez sur un joueur pour voir ses mots</div>
     </div>
+    <div style="font-size:.52rem;letter-spacing:.18em;color:var(--text-dim);text-transform:uppercase;margin-bottom:2px;align-self:flex-start;max-width:340px;">Vos mots</div>
     <div class="found-words">${words.map(w=>`<div class="word-chip">${w}&nbsp;(+${calcScore(w)})</div>`).join('')}</div>
     <button class="btn-replay" id="btnGoHome">Menu</button>`;
   document.body.appendChild(ov);
   ov.querySelector('#btnGoHome').addEventListener('click', goHome);
 
-  // Écoute temps réel
+  const lbContainer = ov.querySelector('#lbRows');
+  renderLbRows(players, lbContainer);
+
+  // Ecoute temps reel
   if (firestoreUnsub) firestoreUnsub();
   firestoreUnsub=db.collection('games').doc(currentGameCode).onSnapshot(snap=>{
-    const lbEl=ov.querySelector('#lbRows'); if(!lbEl)return;
-    lbEl.innerHTML=renderLbRows(snap.exists?snap.data().players||{}:{});
+    if (!lbContainer.isConnected) return;
+    renderLbRows(snap.exists?snap.data().players||{}:{}, lbContainer);
   });
 }
 
-function renderLbRows(players) {
+function renderLbRows(players, container) {
   const sorted=Object.entries(players)
     .filter(([,v])=>v.score!==undefined)
-    .sort((a,b)=>b[1].score-a[1].score);
-  if (!sorted.length) return '<div class="lb-hint">Aucun score encore</div>';
-  return sorted.map(([name,val],idx)=>`
-    <div class="lb-row${name===currentPseudo?' me':''}">
+    .sort(([,a],[,b])=>{
+      if (b.score!==a.score) return b.score-a.score;
+      if ((b.words||0)!==(a.words||0)) return (b.words||0)-(a.words||0);
+      const bestA=Math.max(0,...(a.wordList||[]).map(w=>calcScore(w)));
+      const bestB=Math.max(0,...(b.wordList||[]).map(w=>calcScore(w)));
+      if (bestB!==bestA) return bestB-bestA;
+      const cntA=(a.wordList||[]).filter(w=>calcScore(w)===bestA).length;
+      const cntB=(b.wordList||[]).filter(w=>calcScore(w)===bestB).length;
+      if (cntB!==cntA) return cntB-cntA;
+      return (a.playedAt||0)-(b.playedAt||0);
+    });
+
+  if (!sorted.length) { container.innerHTML='<div class="lb-hint">Aucun score encore</div>'; return; }
+
+  const winner = sorted.length ? sorted[0][0] : null;
+  const uniqueWords = computeUniqueWords(players);
+
+  // Memoriser les lignes ouvertes avant re-rendu
+  const openNames = new Set();
+  container.querySelectorAll('.lb-words.open').forEach(el => openNames.add(el.dataset.player));
+
+  container.innerHTML = '';
+  sorted.forEach(([name,val],idx) => {
+    const isWinner = name === winner && sorted.length > 1;
+    const isMe = name === currentPseudo;
+    const wlist = val.wordList || [];
+
+    const row = document.createElement('div');
+    row.className = 'lb-row' + (isMe?' me':'');
+
+    const wordsHtml = wlist.length
+      ? wlist.map(w => {
+          const isUniq = uniqueWords.has(w);
+          return `<span class="lb-word-chip${isUniq?' word-unique':''}">${w}&nbsp;(+${calcScore(w)})</span>`;
+        }).join('')
+      : '<span style="font-size:.55rem;color:var(--text-dim);">—</span>';
+
+    const isOpen = openNames.has(name);
+
+    row.innerHTML = `
       <span class="lb-rank">${idx+1}.</span>
-      <span class="lb-name">${name}${name===currentPseudo?' (moi)':''}</span>
-      <span class="lb-score">${val.score} pt${val.score!==1?'s':''}</span>
-    </div>`).join('');
+      <span class="lb-name${isWinner?' winner':''}">${name}${isMe?' (moi)':''}</span>
+      <div class="lb-stats">
+        <span class="lb-wc">${val.words||0} mot${(val.words||0)!==1?'s':''}</span>
+        <span class="lb-score">${val.score} pt${val.score!==1?'s':''}</span>
+      </div>
+      <div class="lb-words${isOpen?' open':''}" data-player="${name}">${wordsHtml}</div>`;
+
+    row.addEventListener('click', () => row.querySelector('.lb-words').classList.toggle('open'));
+    container.appendChild(row);
+  });
 }
 
 // ══════════════════════════════════════════════════════════
