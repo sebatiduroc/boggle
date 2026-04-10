@@ -964,7 +964,7 @@ function computeUniqueWords(players) {
 
 async function showMultiOver(words) {
   const snap=await db.collection('games').doc(currentGameCode).get();
-  const players=snap.exists?snap.data().players||{};
+  const players=snap.exists?snap.data().players||{}:{};
   const ov=document.createElement('div'); ov.className='overlay';
   ov.innerHTML=`
     <h2>Fin de partie</h2>
