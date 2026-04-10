@@ -434,7 +434,7 @@ function calcScore(w) {
 // ══════════════════════════════════════════════════════════
 // DICTIONNAIRE  —  TSV même origine (GitHub Pages)
 // ══════════════════════════════════════════════════════════
-const TSV_URL = 'Lexique383.tsv';
+const DICT_URL = 'ODS6.txt';
 const dictionary = new Set();
 
 // Normalisation : retire les diacritiques (naît → NAIT)
@@ -445,13 +445,13 @@ async function loadDictionary() {
   setMsg('Chargement du dictionnaire…'); setBar(5);
   let text;
   try {
-    const resp = await fetch(TSV_URL);
+    const resp = await fetch(DICT_URL);
     if (!resp.ok) throw new Error(
-      `HTTP ${resp.status} — Lexique383.tsv introuvable.\nVérifiez que le fichier est à la racine du dépôt.`
+      `HTTP ${resp.status} — ODS6.txt introuvable.\nVérifiez que le fichier est à la racine du dépôt.`
     );
     const reader = resp.body.getReader();
     const chunks = []; let received = 0;
-    const ESTIMATE = 28 * 1024 * 1024;
+    const ESTIMATE = 4 * 1024 * 1024;
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -463,26 +463,14 @@ async function loadDictionary() {
     text = new TextDecoder('utf-8').decode(merged);
   } catch(err) { showError(err.message); return; }
 
-  setMsg('Extraction des mots…'); setBar(62);
-  // Supprimer les \r pour gérer les fichiers CRLF (Windows)
+  setMsg('Chargement des mots…'); setBar(62);
   const lines = text.replace(/\r/g, '').split('\n');
-  let orthoCol = 0;
-  if (lines[0]) {
-    const idx = lines[0].split('\t').findIndex(h => h.trim() === 'ortho');
-    if (idx >= 0) orthoCol = idx;
-  }
-  const reAlpha = /^[a-zA-ZÀ-ÖØ-öø-ÿœæŒÆ]+$/;
   let n = 0;
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i]; if (!line) continue;
-    let word;
-    if (orthoCol === 0) {
-      const tab = line.indexOf('\t');
-      word = tab === -1 ? line.trim() : line.slice(0, tab).trim();
-    } else { word = (line.split('\t')[orthoCol] || '').trim(); }
+  for (let i = 0; i < lines.length; i++) {
+    const word = lines[i].trim();
     if (!word) continue;
     const len = word.length;
-    if (len >= 3 && len <= 16 && reAlpha.test(word)) dictionary.add(normalize(word));
+    if (len >= 3 && len <= 16) dictionary.add(normalize(word));
     n++;
     if (n % 50000 === 0) {
       setBar(62 + Math.min(33, (n / lines.length * 33) | 0));
@@ -491,8 +479,8 @@ async function loadDictionary() {
   }
   setBar(100);
   const count = dictionary.size.toLocaleString('fr-FR');
-  setMsg(`${count} formes chargées ✓`);
-  document.getElementById('dictInfo').textContent = `Lexique383 · ${count} formes`;
+  setMsg(`${count} mots chargés ✓`);
+  document.getElementById('dictInfo').textContent = `ODS6 · ${count} mots`;
   await new Promise(r => setTimeout(r, 400));
   document.getElementById('loadingMsg').textContent = 'Prêt !';
   document.querySelector('.bar-wrap').style.display = 'none';
