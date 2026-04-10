@@ -745,7 +745,6 @@ async function startAsCreator() {
   currentPseudo=pseudo; currentMode='multi';
   const snap=await db.collection('games').doc(currentGameCode).get();
   board=snap.data().board;
-  saveLocalGame(currentGameCode,pseudo);
   launchGame();
 }
 
@@ -912,8 +911,6 @@ async function onGameOver() {
   const words=[...foundWords].sort((a,b)=>b.length-a.length);
   if (currentMode==='multi') {
     await saveScore(currentGameCode, currentPseudo, score, words);
-    markLocalGamePlayed(currentGameCode, currentPseudo);
-    refreshSharedBtn();
     showMultiOver(words);
   } else {
     showSoloOver(words);
