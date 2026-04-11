@@ -911,9 +911,9 @@ function showSoloOver(words) {
     <div class="final-score">${score}</div>
     <div class="final-sub">point${score!==1?'s':''} — ${foundWords.size} mot${foundWords.size!==1?'s':''}</div>
     <div class="found-words">${words.map(w=>`<div class="word-chip">${w}&nbsp;(+${calcScore(w)})</div>`).join('')}</div>
-    <button class="btn-replay" id="btnReplaySolo">Rejouer</button>`;
+    <button class="btn-replay" id="btnMenuSolo">Menu</button>`;
   document.body.appendChild(ov);
-  ov.querySelector('#btnReplaySolo').addEventListener('click', ()=>{ ov.remove(); startSolo(); });
+  ov.querySelector('#btnMenuSolo').addEventListener('click', goHome);
 }
 
 // ─── Calcule les mots uniques (trouvés par un seul joueur) ───
