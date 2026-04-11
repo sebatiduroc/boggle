@@ -479,7 +479,7 @@ async function loadDictionary() {
   const count = dictionary.size.toLocaleString('fr-FR');
   setMsg(`${count} mots chargés ✓`);
   document.getElementById('dictInfo').textContent = `ODS6 · ${count} mots`;
-  await new Promise(r=>setTimeout(r,400));
+  await new Promise(r=>setTimeout(r,1800));
   document.getElementById('loadingMsg').textContent = 'Prêt !';
   document.querySelector('.bar-wrap').style.display = 'none';
   document.getElementById('modeBtns').style.display = 'flex';
