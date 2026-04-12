@@ -359,6 +359,7 @@
     <span id="dictInfo"></span>
     <span id="authorInfo">Sébastien Dumortier — Avril 2026</span>
     <span id="multiInfo"></span>
+    <span id="boardAnalysis" style="font-size:0.48rem;color:var(--text-dim);letter-spacing:0.1em;opacity:0;transition:opacity 0.5s;"></span>
   </div>
   <div class="top-bar">
     <div class="stat-box"><span class="stat-label">Score</span><span class="stat-value" id="score">0</span></div>
@@ -485,6 +486,8 @@ async function loadDictionary() {
   document.querySelector('.bar-wrap').style.display = 'none';
   document.getElementById('modeBtns').style.display = 'flex';
   purgeOldGames();
+  // Construction du trie en tâche de fond
+  buildTrieInWorker(dictionary);
 }
 
 async function purgeOldGames() {
@@ -518,9 +521,104 @@ let score=0, timeLeft=GAME_DURATION, gameActive=false;
 let timerInterval=null, isDragging=false, gestureStart=null;
 let currentMode='solo', currentGameCode='', currentPseudo='';
 let firestoreUnsub=null;
+let boardAnalysis = null; // { wordCount, maxScore } — rempli par le worker
 
 // ══════════════════════════════════════════════════════════
-// GÉNÉRATION PLATEAU
+// TRIE — construit en tâche de fond après chargement du dico
+// ══════════════════════════════════════════════════════════
+let trieRoot = null;
+let trieWorker = null;
+
+function buildTrieInWorker(words) {
+  const workerCode = `
+    function buildTrie(words) {
+      const root = Object.create(null);
+      for (const w of words) {
+        let node = root;
+        for (const ch of w) {
+          if (!node[ch]) node[ch] = Object.create(null);
+          node = node[ch];
+        }
+        node['$'] = true;
+      }
+      return root;
+    }
+
+    function analyzeBoard(board, trie) {
+      const N = 4;
+      const adj = [];
+      for (let i = 0; i < 16; i++) {
+        adj[i] = [];
+        const r = Math.floor(i / N), c = i % N;
+        for (let j = 0; j < 16; j++) {
+          const dr = Math.abs(r - Math.floor(j/N)), dc = Math.abs(c - j%N);
+          if (dr<=1 && dc<=1 && i!==j) adj[i].push(j);
+        }
+      }
+      function score(w) {
+        const n=w.length; if(n<=4)return 1; if(n===5)return 2;
+        if(n===6)return 3; if(n===7)return 5; return 11;
+      }
+      const found = new Set();
+      function dfs(idx, path, node, word) {
+        if (word.length >= 3 && node['$']) found.add(word);
+        for (const nb of adj[idx]) {
+          if (path.includes(nb)) continue;
+          const ch = board[nb];
+          if (!node[ch]) continue;
+          path.push(nb);
+          dfs(nb, path, node[ch], word + ch);
+          path.pop();
+        }
+      }
+      for (let i = 0; i < 16; i++) {
+        const ch = board[i];
+        if (!trie[ch]) continue;
+        dfs(i, [i], trie[ch], ch);
+      }
+      let maxScore = 0;
+      for (const w of found) maxScore += score(w);
+      return { wordCount: found.size, maxScore };
+    }
+
+    self.onmessage = function(e) {
+      const { type, words, board } = e.data;
+      if (type === 'build') {
+        const trie = buildTrie(words);
+        self.postMessage({ type: 'ready', trie });
+      } else if (type === 'analyze') {
+        const result = analyzeBoard(board, e.data.trie);
+        self.postMessage({ type: 'analysis', ...result });
+      }
+    };
+  `;
+  const blob = new Blob([workerCode], { type: 'application/javascript' });
+  trieWorker = new Worker(URL.createObjectURL(blob));
+  trieWorker.onmessage = (e) => {
+    if (e.data.type === 'ready') {
+      trieRoot = e.data.trie;
+      // Si une grille est déjà en attente d'analyse, lancer maintenant
+      if (board.length === 16) analyzeCurrentBoard();
+    } else if (e.data.type === 'analysis') {
+      boardAnalysis = { wordCount: e.data.wordCount, maxScore: e.data.maxScore };
+      showBoardAnalysis();
+    }
+  };
+  trieWorker.postMessage({ type: 'build', words: [...words] });
+}
+
+function analyzeCurrentBoard() {
+  if (!trieRoot || !trieWorker || board.length !== 16) return;
+  boardAnalysis = null;
+  trieWorker.postMessage({ type: 'analyze', board, trie: trieRoot });
+}
+
+function showBoardAnalysis() {
+  const el = document.getElementById('boardAnalysis');
+  if (!el || !boardAnalysis) return;
+  el.textContent = `${boardAnalysis.wordCount} mot${boardAnalysis.wordCount!==1?'s':''} possibles · max ${boardAnalysis.maxScore} pt${boardAnalysis.maxScore!==1?'s':''}`;
+  el.style.opacity = '1';
+}
 // ══════════════════════════════════════════════════════════
 function seededRng(seed) {
   let s=0;
@@ -633,7 +731,7 @@ async function loadLobby() {
       card.innerHTML = `
         <div class="gc-top">
           <span class="gc-code">${g.code}</span>
-          <span class="gc-total-words">${totalUniqueWords} mot${totalUniqueWords !== 1 ? 's' : ''}</span>
+          <span class="gc-total-words">${totalUniqueWords} mot${totalUniqueWords !== 1 ? 's' : ''} trouvés</span>
           <span class="gc-expires" data-expires="${g.expiresAt}">${fmtCountdown(g.expiresAt - now)}</span>
         </div>
         <div class="gc-players">${playersHtml}</div>
@@ -756,7 +854,11 @@ function launchGame() {
 // ══════════════════════════════════════════════════════════
 function initGame() {
   selectedPath=[]; foundWords=new Set(); score=0; timeLeft=GAME_DURATION;
+  boardAnalysis=null;
+  const el=document.getElementById('boardAnalysis');
+  if(el){ el.textContent='Analyse en cours…'; el.style.opacity='0.4'; }
   resetUI(); renderBoard(true); updateTileStates();
+  analyzeCurrentBoard();
   countdown(revealAndStart);
 }
 
