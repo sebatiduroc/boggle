@@ -720,7 +720,7 @@ async function loadLobby() {
         ? sorted.map(([name,val], idx) => `
             <div class="gc-player-row">
               <span class="gc-player-name">${idx+1}. ${name}</span>
-              <span class="gc-player-score">${val.score} pts · ${val.words||0} mot${val.words!==1?'s':''}</span>
+              <span class="gc-player-score">${val.score} pts · ${(val.wordList||[]).length} mot${(val.wordList||[]).length!==1?'s':''}</span>
             </div>`).join('')
         : '<div class="gc-no-players">Aucun joueur encore</div>';
       const allWords = new Set();
@@ -1066,7 +1066,9 @@ function renderLbRows(players, container) {
   const sorted=Object.entries(players)
     .filter(([,v])=>v.score!==undefined)
     .sort(([nameA,a],[nameB,b])=>{
-      if (b.score!==a.score) return b.score-a.score;
+      const scA = (a.wordList||[]).reduce((s,w)=>s+calcScore(w),0);
+      const scB = (b.wordList||[]).reduce((s,w)=>s+calcScore(w),0);
+      if (scB!==scA) return scB-scA;
       const wA=(a.wordList||[]).length, wB=(b.wordList||[]).length;
       if (wB!==wA) return wB-wA;
       const longA=Math.max(0,...(a.wordList||[]).map(w=>w.length));
@@ -1089,6 +1091,7 @@ function renderLbRows(players, container) {
     const isWinner = name === winner && sorted.length > 1;
     const isMe = name === currentPseudo;
     const wlist = val.wordList || [];
+    const realScore = wlist.reduce((s,w)=>s+calcScore(w),0);
 
     const row = document.createElement('div');
     row.className = 'lb-row' + (isMe?' me':'');
@@ -1107,7 +1110,7 @@ function renderLbRows(players, container) {
       <span class="lb-name${isWinner?' winner':''}">${name}${isMe?' (moi)':''}</span>
       <div class="lb-stats">
         <span class="lb-wc">${wlist.length} mot${wlist.length!==1?'s':''}</span>
-        <span class="lb-score">${val.score} pt${val.score!==1?'s':''}</span>
+        <span class="lb-score">${realScore} pt${realScore!==1?'s':''}</span>
       </div>
       <div class="lb-words${isOpen?' open':''}" data-player="${name}">${wordsHtml}</div>`;
 
