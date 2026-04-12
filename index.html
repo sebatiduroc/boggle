@@ -1067,7 +1067,8 @@ function renderLbRows(players, container) {
     .filter(([,v])=>v.score!==undefined)
     .sort(([,a],[,b])=>{
       if (b.score!==a.score) return b.score-a.score;
-      if ((b.words||0)!==(a.words||0)) return (b.words||0)-(a.words||0);
+      const wA=(a.wordList||[]).length, wB=(b.wordList||[]).length;
+      if (wB!==wA) return wB-wA;
       const bestA=Math.max(0,...(a.wordList||[]).map(w=>calcScore(w)));
       const bestB=Math.max(0,...(b.wordList||[]).map(w=>calcScore(w)));
       if (bestB!==bestA) return bestB-bestA;
@@ -1108,7 +1109,7 @@ function renderLbRows(players, container) {
       <span class="lb-rank">${idx+1}.</span>
       <span class="lb-name${isWinner?' winner':''}">${name}${isMe?' (moi)':''}</span>
       <div class="lb-stats">
-        <span class="lb-wc">${val.words||0} mot${(val.words||0)!==1?'s':''}</span>
+        <span class="lb-wc">${wlist.length} mot${wlist.length!==1?'s':''}</span>
         <span class="lb-score">${val.score} pt${val.score!==1?'s':''}</span>
       </div>
       <div class="lb-words${isOpen?' open':''}" data-player="${name}">${wordsHtml}</div>`;
