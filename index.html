@@ -1065,16 +1065,13 @@ async function showMultiOver(words) {
 function renderLbRows(players, container) {
   const sorted=Object.entries(players)
     .filter(([,v])=>v.score!==undefined)
-    .sort(([,a],[,b])=>{
+    .sort(([nameA,a],[nameB,b])=>{
       if (b.score!==a.score) return b.score-a.score;
       const wA=(a.wordList||[]).length, wB=(b.wordList||[]).length;
       if (wB!==wA) return wB-wA;
-      const bestA=Math.max(0,...(a.wordList||[]).map(w=>calcScore(w)));
-      const bestB=Math.max(0,...(b.wordList||[]).map(w=>calcScore(w)));
-      if (bestB!==bestA) return bestB-bestA;
-      const cntA=(a.wordList||[]).filter(w=>calcScore(w)===bestA).length;
-      const cntB=(b.wordList||[]).filter(w=>calcScore(w)===bestB).length;
-      if (cntB!==cntA) return cntB-cntA;
+      const longA=Math.max(0,...(a.wordList||[]).map(w=>w.length));
+      const longB=Math.max(0,...(b.wordList||[]).map(w=>w.length));
+      if (longB!==longA) return longB-longA;
       return (a.playedAt||0)-(b.playedAt||0);
     });
 
